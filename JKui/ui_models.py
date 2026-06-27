@@ -1,3 +1,4 @@
+import os
 import re
 import collections
 import operator
@@ -11,6 +12,7 @@ from qtpy.QtCore import *
 
 import the_files
 import the_variables
+import misc_funcs
 
 # 以下为空值，显示空列表
 # 需要填充新值，然后使用
@@ -32,34 +34,46 @@ parent_to_clone = dict()
 all_set = dict()
 parent_set = dict()
 clone_set = dict()
+#######
+#######
+available_set = set()
+unavailable_set = set()
+filter_set = set()
+#######
 
 ###
 # 内部目录
 internal_index = dict()
-
 #################
-
+# 拥有列表、未拥有列表
+#internal_index_2={"available_set":"available_set","unavailable_set":"unavailable_set"}
+internal_index_2={"available_set":"available_set",}
 # 外部目录，需要读取 用户自定义目录
 # 外部目录，第一层，有文件名后缀，以文件名后缀为区分
 external_index = dict()
 # 外部目录，source 分类，需要读取 用户自定义目录
-external_index_2 = dict()
+external_index_by_source = dict()
 # 之后，合并以上几类目录
 index_chainmap = collections.ChainMap()
 #######################################
 
+##
 icon_column_index = -1
 translation_column_index = -1
 id_column_index = -1
 parent_have_more_than_1_clone_set = set() # parent_id set
+#parent_to_clone__keys_set = set() 
 
-
-# 图片
+# 图标
 # 需要启动 qt 后，用它的 QPixmap 类加载图片
 icon_red_pixmap = None
 icon_green_pixmap = None
 icon_yellow_pixmap = None
 icon_black_pixmap = None
+icon_red_pixmap_2_level = None
+icon_green_pixmap_2_level = None
+icon_yellow_pixmap_2_level = None
+icon_black_pixmap_2_level = None
 
 # new_table_type 
 # 变量记录在 model 里 , new_table_type
@@ -74,7 +88,6 @@ the_index_info = None  # 记录 目录名称
 the_index_content = [] # 记录 目录内容
 
 def the_timer(func):
-    """装饰器：打印函数的执行时间（秒）"""
     @functools.wraps(func)
     def wrapper(*args, **kwargs):
         start = time.perf_counter()      # 高精度计时
@@ -116,6 +129,7 @@ def load_gamelist_translation_file(file_path):
 
 def load_icon():
     global icon_red_pixmap, icon_green_pixmap, icon_yellow_pixmap, icon_black_pixmap
+    global icon_red_pixmap_2_level, icon_green_pixmap_2_level, icon_yellow_pixmap_2_level, icon_black_pixmap_2_level
 
     icon_red_pixmap = QPixmap()
     try:
@@ -140,6 +154,41 @@ def load_icon():
         icon_black_pixmap.loadFromData(the_files.icon_black)
     except:
         pass
+
+    size = 	QSize(the_variables.icon_size * 2,the_variables.icon_size)
+
+    empty_icon = QPixmap(size)
+    empty_icon.fill(Qt.transparent)
+    painter = QPainter()
+    painter.begin(empty_icon)
+    painter.drawPixmap(the_variables.icon_size, 0,icon_red_pixmap)
+    painter.end()    
+    icon_red_pixmap_2_level = empty_icon
+
+    empty_icon = QPixmap(size)
+    empty_icon.fill(Qt.transparent)
+    painter = QPainter()
+    painter.begin(empty_icon)
+    painter.drawPixmap(the_variables.icon_size, 0,icon_green_pixmap)
+    painter.end()    
+    icon_green_pixmap_2_level = empty_icon
+
+
+    empty_icon = QPixmap(size)
+    empty_icon.fill(Qt.transparent)
+    painter = QPainter()
+    painter.begin(empty_icon)
+    painter.drawPixmap(the_variables.icon_size, 0,icon_yellow_pixmap)
+    painter.end()    
+    icon_yellow_pixmap_2_level = empty_icon   
+
+    empty_icon = QPixmap(size)
+    empty_icon.fill(Qt.transparent)
+    painter = QPainter()
+    painter.begin(empty_icon)
+    painter.drawPixmap(the_variables.icon_size, 0,icon_black_pixmap)
+    painter.end()    
+    icon_black_pixmap_2_level = empty_icon
 
 def update_some_value():
     global icon_column_index
@@ -178,15 +227,19 @@ def update_some_value():
         return temp
     parent_have_more_than_1_clone_set = get_parent_have_more_than_1_children()
 
+    #parent_to_clone__keys_set = set( parent_to_clone.keys() )
+
     
     
 
 
 # 目录用
 index_list = []
-index_list_for_search = []
 index_has_children = dict()
-def rebuild_index(top_index_list=None):
+index_list_for_search = []
+index_has_children_for_search = dict()
+
+def rebuild_index_bak(top_index_list=None):
     # 第一层 index_list : 
     #   主目录 id
     # 第二层 index_has_children
@@ -200,7 +253,7 @@ def rebuild_index(top_index_list=None):
     global index_chainmap
     index_list.clear()
     index_has_children.clear()
-    index_chainmap = collections.ChainMap(internal_index, external_index,external_index_2)
+    index_chainmap = collections.ChainMap(internal_index, external_index,external_index_by_source)
 
     user_order = top_index_list + list(the_variables.index_order)
     
@@ -226,35 +279,151 @@ def rebuild_index(top_index_list=None):
                 index_has_children[parent_index_id] = sorted( parent_item["children"].keys() )
 
 
+def rebuild_index(top_index_list=None):
+    # 第一层 index_list : 
+    #   主目录 id
+    # 第二层 index_has_children
+    #   主目录 id : 子目录 id 列表
+
+    if top_index_list is None:
+        top_index_list = []
+    
+    global index_list
+    global index_has_children
+    global index_chainmap
+    index_list.clear()
+    index_has_children.clear()
+    index_chainmap = collections.ChainMap(internal_index, internal_index_2, external_index,external_index_by_source)
+
+    used_id = set()
+
+    # 第一层 置顶
+    for index_id in top_index_list:
+        if index_id in index_chainmap:
+            if index_id not in used_id:
+                index_list.append(index_id)
+                used_id.add(index_id)
+    # 第一层 内置
+    for index_id in ( the_variables.index_order ): # 内置固定优先排序
+        if index_id in ( internal_index.keys() | internal_index_2.keys() ):
+            if index_id not in used_id:
+                index_list.append(index_id)
+                used_id.add(index_id)
+    for index_id in sorted( internal_index.keys() | internal_index_2.keys() ): # 其它
+        if index_id in index_chainmap:
+            if index_id not in used_id:
+                index_list.append(index_id)
+                used_id.add(index_id)
+    # 第一层 external_index
+    for index_id in sorted( external_index.keys() ): # 其它
+        if index_id in index_chainmap:
+            if index_id not in used_id:
+                index_list.append(index_id)
+                used_id.add(index_id)
+    # 第一层 external_index_by_source
+    for index_id in sorted( external_index_by_source.keys() ): # 其它
+        if index_id in index_chainmap:
+            if index_id not in used_id:
+                index_list.append(index_id)
+                used_id.add(index_id)                
+
+    # 第二层
+    # internal_index
+    # internal_index_2 无
+    # external_index
+    # external_index_by_source
+    for parent_index_id in index_list:
+        if parent_index_id in internal_index.keys():
+            parent_item = index_chainmap[parent_index_id]
+            if "children" in parent_item:
+                if parent_item["children"]:
+                    #print()
+                    #print(parent_index_id,parent_item["children"].keys()  )
+                    index_has_children[parent_index_id] = sorted( parent_item["children"].keys() )
+        elif parent_index_id in external_index.keys():
+            parent_item = index_chainmap[parent_index_id]
+
+            the_keys = set( parent_item.keys() )
+            the_other_keys = the_keys - {"FOLDER_SETTINGS","ROOT_FOLDER"}
+            if the_other_keys :
+                index_has_children[parent_index_id] = sorted( the_other_keys )
+        elif parent_index_id in external_index_by_source.keys():
+            parent_item = index_chainmap[parent_index_id]
+
+            the_keys = set( parent_item.keys() )
+            the_other_keys = the_keys - {"FOLDER_SETTINGS","ROOT_FOLDER"}
+            if the_other_keys :
+                index_has_children[parent_index_id] = sorted( the_other_keys )                    
+
+
+
+
+
+
+
+
+
 
 
 ####################
+@the_timer
 def get_id_list_from_index(id_1,id_2="",):
-    
+    # 拥有列表、未拥有列表
+    # 内部目录
+    # 外部目录
+    # 外部目录 by source
+
     the_index = index_chainmap
     
-    def for_level_1(id_1):
-        temp = [] # 可能为 list 也可能为 set
-        if id_1 in the_index:
-            if "gamelist" in the_index[id_1]:
-                temp = the_index[id_1]["gamelist"]
-        return temp
+    temp_result = []
+
+    def get_id_list_from_internal_index(id_1,id_2=""):
+        def for_level_1(id_1):
+            temp = [] # 可能为 list 也可能为 set
+            if id_1 in the_index:
+                if "gamelist" in the_index[id_1]:
+                    temp = the_index[id_1]["gamelist"]
+            return temp
+        
+        def for_level_2(id_1,id_2):
+            temp = [] # 可能为 list 也可能为 set
+            if id_1 in the_index:
+                if "children" in the_index[id_1]:
+                    if id_2 in the_index[id_1]["children"]:
+                        if "gamelist" in the_index[id_1]["children"][id_2]:
+                            temp = the_index[id_1]["children"][id_2]["gamelist"]
+            return temp
+        
+        if id_1 and id_2:
+            return for_level_2(id_1,id_2)
+        elif id_1 and (not id_2):
+            return for_level_1(id_1)
+
+
+    # 拥有列表
+    if id_1 == "available_set":
+        temp_result = available_set
+    # 未拥有列表
+    elif id_1 == "unavailable_set":
+        temp_result = unavailable_set
+    # 外部目录
+    elif id_1.lower().endswith(".ini"):
+        temp_result = misc_funcs.get_id_list_from_external_index(id_1,id_2)
+    # 外部目录 by source
+    elif id_1.lower().endswith(".source_ini"):
+        temp_result = misc_funcs.get_id_list_from_external_index_by_source(id_1,id_2)
+    # 内部目录
+    else:
+        temp_result = misc_funcs.get_id_list_from_internal_index(id_1,id_2)
+
+    if not filter_set: # 不过滤
+        if all_set is temp_result:
+            return all_set
+        else:
+            return all_set.intersection(temp_result)
+    else:
+        return all_set.intersection(temp_result) - filter_set
     
-    def for_level_2(id_1,id_2):
-        temp = [] # 可能为 list 也可能为 set
-        if id_1 in the_index:
-            if "children" in the_index[id_1]:
-                if id_2 in the_index[id_1]["children"]:
-                    if "gamelist" in the_index[id_1]["children"][id_2]:
-                        temp = the_index[id_1]["children"][id_2]["gamelist"]
-        return temp
-    
-    if id_1 and id_2:
-        return for_level_2(id_1,id_2)
-    elif id_1 and (not id_2):
-        return for_level_1(id_1)
-    
-    return []
 #########################
 # for test
 def set_game_list_to_all():
@@ -267,22 +436,29 @@ def set_game_list_to_all():
 
 ###############
 @the_timer
-def func_for_search(search_string,search_object_list=None,ignore_case=True,use_regex=False,search_columns=tuple(),):
+def func_for_search(search_string,search_object_list=None,use_re=False,ignore_case=True,search_columns=tuple(),):
     # 都用 re 写吧，正常的搜索也写成 re 模式，少写一次代码
-
-    result_list = []
 
     if search_object_list is None:search_object_list = []
 
-    flag_search_all = False
+    result_list = []
 
+    flag_search_all = False
     # search_columns ，用数字表示的切片，
     # 例如：[0,1,2] 表示搜索 第0列、第1列、第2列
     # 空值表示搜索所有列
     if not search_columns:
         flag_search_all = True
+    else:
+        temp_all_set = {n for n in range(len(columns))} # 以列号的数字表示的
+        if set(search_columns) == temp_all_set :
+            flag_search_all = True
 
-    if use_regex:
+    #print()
+    #print("search_columns:",search_columns)
+    #print("flag_search_all:",flag_search_all)
+
+    if use_re:
         re_string = search_string
     else:
         re_string = re.escape(search_string)
@@ -444,10 +620,9 @@ class Model_for_table_view(QAbstractTableModel):
         #self.layoutChanged.emit()
         self.endResetModel()
     
-    def new_func_show_search_result(self,search_string,ignore_case=True,use_regex=False,search_columns=tuple()):
+    def new_func_show_search_result(self,search_string,use_re=False,ignore_case=True,search_columns=tuple()):
         print("")
         print("show search result")
-        print("search_string: ",search_string)   
 
         if (not self.new_data_remember_for_search) and (not self.new_game_list_to_show):
             return
@@ -459,9 +634,9 @@ class Model_for_table_view(QAbstractTableModel):
         # 记录原有数据
         if not self.new_data_remember_for_search:
             self.new_data_remember_for_search = self.new_game_list_to_show
-        
+
         # 搜索
-        self.new_game_list_to_show = func_for_search(search_string,ignore_case=ignore_case,search_object_list=[self.new_data_remember_for_search,])
+        self.new_game_list_to_show = func_for_search(search_string,search_object_list=[self.new_data_remember_for_search,],use_re=use_re,ignore_case=ignore_case,search_columns=search_columns)
 
         # sort
         self.new_func_for_sort()
@@ -478,13 +653,296 @@ class Model_for_table_view(QAbstractTableModel):
         self.new_data_remember_for_search.clear()
 
 
-class Model_for_table_view_2_level(Model_for_table_view):
+
+
+@the_timer
+def func_for_sort_table_view_2_level(column=None,reverse=False,games_to_be_sorted=None):
+    
+    #print()
+    #print("func for sort treeview")
+    #print(len(games_to_be_sorted))    
+    
+    if games_to_be_sorted is None:games_to_be_sorted = []
+    
+    # return value
+    current_game_list_for_level_1 = []
+    current_parent_have_children_set = set()
+    current_clone_have_parent = set()
+
+    # 未指定值，则，读取默认值
+    if column is None:
+        column = the_variables.sort_column
+    if reverse is None:
+        reverse = the_variables.sort_reverse
+    if column < 0 or column >= len(columns):
+        column = 0
+    if type(reverse) is not bool:
+        reverse = False
+    
+    # sort key func
+    def sort_key_func_1(game_id):
+        return locale.strxfrm(machine_dict[game_id][column])
+    def sort_key_func_2(game_id):
+        return machine_dict[game_id][column]
+    #
+    sort_key_func = sort_key_func_2
+    if the_variables.sort_colums_use_locale:
+        if column in the_variables.sort_colums_use_locale:
+            sort_key_func = sort_key_func_1
+    if column == id_column_index:
+        sort_key_func = None
+        #print("sort by id")
+
+    
+    ###################################
+    t=time.time()
+    #current_parent = parent_set.intersection(games_to_be_sorted)
+    #current_clone = clone_set.intersection(games_to_be_sorted)    
+    if games_to_be_sorted is all_set:
+        current_parent = parent_set
+        current_clone = clone_set 
+        print("same")
+    else:
+        current_parent = parent_set.intersection(games_to_be_sorted)
+        current_clone = clone_set.intersection(games_to_be_sorted)
+        print("diff")
+
+    print(time.time()-t)
+   
+    #### 空
+    if ( not current_parent)  and ( not current_clone):
+        return current_game_list_for_level_1,current_clone_have_parent
+    
+    #### 半空
+    if not current_parent:
+        current_game_list_for_level_1 = list(current_clone)
+        current_game_list_for_level_1.sort( key = sort_key_func ,reverse = reverse, )
+        return current_game_list_for_level_1,current_clone_have_parent
+    
+    #### 半空 2
+    if not current_clone:
+        current_game_list_for_level_1 = list(current_parent)
+        current_game_list_for_level_1.sort( key = sort_key_func ,reverse = reverse, )
+        return current_game_list_for_level_1,current_clone_have_parent
+    
+    #### 其它
+    ###########################
+    
+    def get_some_data():
+
+        # current_clone_have_parent
+        current_clone_have_parent = []
+        for parent_id in (current_parent & parent_to_clone.keys() ):  # 有 clone 的 parent 交集，缩小范围
+            current_clone_have_parent.extend(parent_to_clone[parent_id]) # 超范围
+        current_clone_have_parent = current_clone.intersection(current_clone_have_parent) # 处理超范围 # set
+        
+        # current_clone_not_have_parent
+        #current_clone_not_have_parent = current_clone - current_clone_have_parent
+        if len(current_clone_have_parent) == len(current_clone) :
+            current_clone_not_have_parent = set()
+        elif len(current_clone_have_parent) == 0 :
+            current_clone_not_have_parent = current_clone
+        else:
+            current_clone_not_have_parent = current_clone - current_clone_have_parent
+        
+        # current_parent_have_children_set
+        current_parent_have_children_set = {clone_to_parent[clone_id] for clone_id in current_clone_have_parent}
+    
+        return current_clone_have_parent,current_clone_not_have_parent,current_parent_have_children_set
+
+    current_clone_have_parent,current_clone_not_have_parent,current_parent_have_children_set = get_some_data()
+
+    if not current_clone_have_parent:
+        # 仅一层
+        current_game_list_for_level_1 = sorted( current_parent | current_clone_not_have_parent,key = sort_key_func ,reverse = reverse, )
+        return current_game_list_for_level_1,current_clone_have_parent
+    else:
+        # 两层
+        
+        current_game_list_for_level_1 = current_parent | current_clone_not_have_parent
+        current_game_list_for_level_1 = sorted( current_game_list_for_level_1, key = sort_key_func ,reverse = reverse, ) 
+
+        for parent_id in ( current_parent_have_children_set & parent_have_more_than_1_clone_set ):
+            parent_to_clone[parent_id].sort( key = sort_key_func,reverse = reverse,)
+        
+        temp_list = []
+        for game_id in current_game_list_for_level_1:
+            temp_list.append(game_id)
+            if game_id in current_parent_have_children_set:
+                for clone_id in parent_to_clone[game_id]:
+                    if clone_id  in current_clone_have_parent:
+                        temp_list.append(clone_id)
+                    
+        return temp_list,current_clone_have_parent
+    return [],set()
+
+@the_timer
+def func_for_sort_table_view_2_level_bak(column=None,reverse=False,games_to_be_sorted=None):
+
+    #print()
+    #print("func for sort treeview")
+    #print(len(games_to_be_sorted))    
+    
+    if games_to_be_sorted is None:games_to_be_sorted = []
+    
+    # return value
+    current_game_list_for_level_1 = []
+    #current_parent_have_children_set = set()
+    current_clone_have_parent = set()
+
+    # 未指定值，则，读取默认值
+    if column is None:
+        column = the_variables.sort_column
+    if reverse is None:
+        reverse = the_variables.sort_reverse
+    if column < 0 or column >= len(columns):
+        column = 0
+    if type(reverse) is not bool:
+        reverse = False
+
+    # sort key func
+    def sort_key_func_1(game_id):
+        return locale.strxfrm(machine_dict[game_id][column])
+    def sort_key_func_2(game_id):
+        return machine_dict[game_id][column]
+    #
+    sort_key_func = sort_key_func_2
+    if the_variables.sort_colums_use_locale:
+        if column in the_variables.sort_colums_use_locale:
+            sort_key_func = sort_key_func_1
+    if column == id_column_index:
+        sort_key_func = None
+        #print("sort by id")
+
+    ###################################
+
+    #t1 = time.time()
+
+    #current_parent = parent_set.intersection(games_to_be_sorted)
+    #current_clone = clone_set.intersection(games_to_be_sorted)    
+    if games_to_be_sorted is all_set:
+        current_parent = parent_set
+        current_clone = clone_set 
+    else:
+        current_parent = parent_set.intersection(games_to_be_sorted)
+        current_clone = clone_set.intersection(games_to_be_sorted)
+
+    #t2 = time.time()
+    #print("time - 1: ",f"{t2-t1:.5f}")
+
+    #### 空
+    if ( not current_parent)  and ( not current_clone):
+        return current_game_list_for_level_1,current_clone_have_parent
+    
+    #### 半空
+    if not current_parent:
+        current_game_list_for_level_1 = list(current_clone)
+        current_game_list_for_level_1.sort( key = sort_key_func ,reverse = reverse, )
+        return current_game_list_for_level_1,current_clone_have_parent
+    
+    #### 半空 2
+    if not current_clone:
+        current_game_list_for_level_1 = list(current_parent)
+        current_game_list_for_level_1.sort( key = sort_key_func ,reverse = reverse, )
+        return current_game_list_for_level_1,current_clone_have_parent
+
+    #### 其它
+    ###########################
+    
+    # current_clone_have_parent
+    current_clone_have_parent = []
+    for parent_id in current_parent.intersection(parent_to_clone): # 有 clone 的 parent 交集，缩小范围
+        current_clone_have_parent.extend(parent_to_clone[parent_id]) # 超范围
+    current_clone_have_parent = current_clone.intersection(current_clone_have_parent) # 处理超范围 # set
+    
+    # current_clone_not_have_parent
+    if len(current_clone_have_parent) == len(current_clone) :
+        current_clone_not_have_parent = set()
+    elif len(current_clone_have_parent) == 0 :
+        current_clone_not_have_parent = current_clone
+    else:
+        current_clone_not_have_parent = current_clone - current_clone_have_parent
+
+    if not current_clone_have_parent:
+        # 仅一层
+        current_game_list_for_level_1 = sorted( current_parent | current_clone_not_have_parent,key = sort_key_func ,reverse = reverse, )
+        return current_game_list_for_level_1,current_clone_have_parent
+    else:
+        # 两层
+        
+        # current_parent_have_children_set
+        current_parent_have_children_set = [clone_to_parent[clone_id] for clone_id in current_clone_have_parent]
+        current_parent_have_children_set = set(current_parent_have_children_set)
+
+        #t3 = time.time()
+        #print("time - 2: ",f"{t3-t2:.5f}")  
+
+        temp_set=current_parent.union(current_clone_not_have_parent)
+        current_game_list_for_level_1 = sorted( temp_set, key = sort_key_func ,reverse = reverse, )
+
+        #t4 = time.time()
+        #print("time - 3: ",f"{t4-t3:.5f}")
+        
+
+        for parent_id in ( current_parent_have_children_set & parent_have_more_than_1_clone_set ):
+            parent_to_clone[parent_id].sort( key = sort_key_func,reverse = reverse,)
+        
+        temp_list = []
+        for game_id in current_game_list_for_level_1:
+            temp_list.append(game_id)
+            if game_id in current_parent_have_children_set:
+                for clone_id in parent_to_clone[game_id]:
+                    if clone_id  in current_clone_have_parent:
+                        temp_list.append(clone_id)
+                        
+        return temp_list,current_clone_have_parent
+
+
+
+class Model_for_table_view_2_level(QAbstractTableModel):
 
     def __init__(self,*args,**kwargs):
         super().__init__(*args,**kwargs)
 
         self.new_table_type = "table_view_2_level"
 
+        self.new_game_list_to_show=[]
+        self.new_data_remember_for_search=[]
+        self.new_current_clone_have_parent=set()
+        
+    def data(self, index, role=Qt.DisplayRole):
+        if role == Qt.DisplayRole:
+            return machine_dict[ self.new_game_list_to_show[index.row()] ] [ index.column() ]
+        elif role == Qt.DecorationRole:
+            if index.column() == 0:
+                
+                game_id = self.new_game_list_to_show[index.row()]
+                value = machine_dict[ game_id ] [ icon_column_index ]
+                return self.new_func_get_icon(value,game_id)
+
+
+    def headerData(self,section,orientation,role=Qt.DisplayRole):
+        if role == Qt.DisplayRole:
+            if orientation == Qt.Horizontal:
+                if section < len(columns):
+                    return columns[section]
+
+            if orientation == Qt.Vertical:
+                return str(section)
+
+    def rowCount(self, parent=QModelIndex()):
+        return len(self.new_game_list_to_show)
+
+    def columnCount(self, parent=QModelIndex()):  
+        # 相同长度
+        return len(columns)
+
+    def new_func_get_id_and_item_by_index(self, index):
+        row = index.row()
+        game_id = self.new_game_list_to_show[row]
+        return game_id, machine_dict[ game_id ] 
+
+    # 鼠标点击排序
     def sort(self,column, order = Qt.AscendingOrder):
         
         # Qt::AscendingOrder          0
@@ -500,17 +958,21 @@ class Model_for_table_view_2_level(Model_for_table_view):
         
         the_variables.sort_column = column
         the_variables.sort_reverse = reverse
-        
-        ###
-        self.layoutAboutToBeChanged.emit()
-        
-        global game_list
-        global machine_dict
-        game_list.sort( key = lambda game_id : machine_dict[game_id][column] ,reverse = reverse, )
-        
-        ###
-        self.layoutChanged.emit()
 
+        ###
+        #self.layoutAboutToBeChanged.emit()
+        self.beginResetModel()
+        
+        self.new_func_for_sort(column,reverse)
+        
+        ###
+        #self.layoutChanged.emit()
+        self.endResetModel()
+    
+ 
+    def new_func_for_sort(self,column=None,reverse=None):
+
+        self.new_game_list_to_show,self.new_current_clone_have_parent = func_for_sort_table_view_2_level(column=column,reverse=reverse,games_to_be_sorted=self.new_game_list_to_show)
 
     # 目录发出信号
     # 显示新内容
@@ -519,16 +981,74 @@ class Model_for_table_view_2_level(Model_for_table_view):
         print("show by index")
         print("id_1: ",id_1)
         print("id_2: ",id_2)   
+        
+        ###
+        #self.layoutAboutToBeChanged.emit()
+        self.beginResetModel()
+        
+        self.new_func_clear_all_data()
+
+        #self.new_game_list_to_show =  get_id_list_from_index(id_1,id_2) 
+        self.new_game_list_to_show = all_set.intersection( get_id_list_from_index(id_1,id_2) ) 
+        self.new_func_for_sort()
 
         ###
-        self.layoutAboutToBeChanged.emit()
-        global game_list
-        global machine_dict
-        global all_set
-        game_list = sorted(all_set.intersection(get_id_list_from_index(id_1,id_2)))
-        ###
-        self.layoutChanged.emit()
+        #self.layoutChanged.emit()
+        self.endResetModel()
+    
+    def new_func_show_search_result(self,search_string,use_re=False,ignore_case=True,search_columns=tuple()):
+        print("")
+        print("show search result")
+        print("search_string: ",search_string)   
 
+        if (not self.new_data_remember_for_search) and (not self.new_game_list_to_show):
+            return
+
+        ###
+        self.beginResetModel()
+        #self.layoutAboutToBeChanged.emit()
+
+        # 记录原有数据
+        if not self.new_data_remember_for_search:
+            self.new_data_remember_for_search = self.new_game_list_to_show
+        
+        # 搜索
+        self.new_game_list_to_show = func_for_search(search_string,search_object_list=[self.new_data_remember_for_search,],use_re=use_re,ignore_case=ignore_case,search_columns=search_columns)
+
+        # sort
+        self.new_func_for_sort()
+
+        ###
+        #self.layoutChanged.emit()
+        self.endResetModel()
+
+    def new_func_clear_all_data(self):
+        print("clear data")
+        self.new_game_list_to_show.clear()
+        self.new_data_remember_for_search.clear()
+        self.new_current_clone_have_parent.clear()
+    def new_func_clear_search_data(self):
+        self.new_data_remember_for_search.clear()
+
+    def new_func_get_icon(self,value,game_id):
+        if game_id in self.new_current_clone_have_parent:
+            if value == "good":
+                return icon_green_pixmap_2_level
+            elif value == "imperfect":
+                return icon_yellow_pixmap_2_level
+            elif value == "preliminary":
+                return icon_red_pixmap_2_level
+            else:
+                return icon_black_pixmap_2_level
+        else:
+            if value == "good":
+                return icon_green_pixmap
+            elif value == "imperfect":
+                return icon_yellow_pixmap
+            elif value == "preliminary":
+                return icon_red_pixmap
+            else:
+                return icon_black_pixmap
 
 @the_timer
 def func_for_sort_treeview(column=None,reverse=False,games_to_be_sorted=None):
@@ -913,7 +1433,7 @@ class Model_for_tree_view(QAbstractItemModel):
         #self.layoutChanged.emit()
         self.endResetModel()
     
-    def new_func_show_search_result(self,search_string,ignore_case=True,use_regex=False,search_columns=tuple()):
+    def new_func_show_search_result(self,search_string,use_re=False,ignore_case=True,search_columns=tuple()):
         print("")
         print("show search result")
         print("search_string: ",search_string)   
@@ -930,7 +1450,7 @@ class Model_for_tree_view(QAbstractItemModel):
             self.new_games_all_data_remember_for_search = self.new_games_all
         
         self.new_func_clear_data_for_sort()
-        self.new_games_all = func_for_search(search_string,ignore_case=ignore_case,search_object_list=[self.new_games_all_data_remember_for_search,])
+        self.new_games_all = func_for_search(search_string,search_object_list=[self.new_games_all_data_remember_for_search,],use_re=use_re,ignore_case=ignore_case,search_columns=search_columns)
         self.new_func_for_sort()
 
         ###
@@ -974,7 +1494,11 @@ class Model_for_index(QAbstractItemModel):
             internal_id = index.internalId()
             if internal_id == 1:
                 text = index_list[index.row()]
-                return the_variables.index_translation.get(text,text)
+                if text.lower().endswith(".ini") or text.lower().endswith(".source_ini"):
+                    the_text = os.path.basename(text)
+                else:
+                    the_text = the_variables.index_translation.get(text,text)
+                return the_text
             elif internal_id > 1:
                 parent_row = internal_id -2
                 parent_id = index_list[parent_row]
@@ -1153,6 +1677,14 @@ if __name__ == "__main__":
         a,b=func_for_sort_treeview(column = 1,reverse=True,games_to_be_sorted=temp_set)      
         a,b=func_for_sort_treeview(column = 2,games_to_be_sorted=temp_set)                   
         a,b=func_for_sort_treeview(column = 2,reverse=True,games_to_be_sorted=temp_set)      
+
+        a,b=func_for_sort_table_view_2_level(column = None,games_to_be_sorted=temp_set)               
+        a,b=func_for_sort_table_view_2_level(column = None,reverse=True,games_to_be_sorted=temp_set)  
+        a,b=func_for_sort_table_view_2_level(column = 1,games_to_be_sorted=temp_set)                   
+        a,b=func_for_sort_table_view_2_level(column = 1,reverse=True,games_to_be_sorted=temp_set)      
+        a,b=func_for_sort_table_view_2_level(column = 2,games_to_be_sorted=temp_set)                   
+        a,b=func_for_sort_table_view_2_level(column = 2,reverse=True,games_to_be_sorted=temp_set)      
+                
         print("........")
         print("all_set:",len(all_set))
         print("temp_set:",len(temp_set))

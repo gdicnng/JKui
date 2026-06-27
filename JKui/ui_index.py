@@ -71,7 +71,7 @@ class My_index_table(QTreeView):
         #    print("deselected: ", deselected.indexes()[0].row())
         super().selectionChanged(selected, deselected)
     
-    def new_func_select_row_by_index_id(self,index_id_1,index_id_2) :
+    def new_func_select_row_by_index_id(self,index_id_1,index_id_2,scroll_to = False) :
         index = self.model().new_func_find_item(index_id_1,index_id_2)
         if index is None:
             return None
@@ -79,4 +79,6 @@ class My_index_table(QTreeView):
         if index.isValid():
             #self.setCurrentIndex(index)
             self.selectionModel().select(index,QItemSelectionModel.Select)
+            if scroll_to:
+                self.scrollTo(index,QAbstractItemView.PositionAtCenter)
     

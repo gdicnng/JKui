@@ -43,7 +43,7 @@ default_value = {
 
     "extra/icons": "icons",
 
-    "extra/floders": "floders",
+    "extra/folders": "folders",
 
     "extra_image_folder_path/image_1": "titles",
     "extra_image_folder_path/image_2": "snap",

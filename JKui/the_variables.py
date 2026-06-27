@@ -11,6 +11,8 @@ current_id = None
 locale_original = None 
 # 获取当前语言区域 locale.setlocale(locale.LC_ALL)  
 
+icon_size=16
+
 sort_column = 0
 sort_reverse = False
 sort_colums_use_locale = []

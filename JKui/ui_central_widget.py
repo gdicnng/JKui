@@ -20,16 +20,16 @@ class TheCentralWidget(QStackedWidget):
 
         self.new_signal_for_id_change.connect(self.new_slot_record_game_id)
 
+        ## QSortFilterProxyModel ，这东西太卡了,不能用
+
         ####
         # tableview
         self.new_ui_gamelist_tableview = ui_gamelist_tableview.My_Table(self)
         self.addWidget(self.new_ui_gamelist_tableview)
 
-        # 排序
-        self.new_ui_gamelist_tableview.setSortingEnabled(True)
-        self.new_ui_gamelist_tableview.sortByColumn(-1, Qt.AscendingOrder)
-
-        ## QSortFilterProxyModel ，这东西太卡了,不能用
+        # tableview 2 level
+        self.new_ui_gamelist_tableview_2_level = ui_gamelist_tableview.My_Table_for_2_level(self)
+        self.addWidget(self.new_ui_gamelist_tableview_2_level)
 
 
 
@@ -60,10 +60,13 @@ class TheCentralWidget(QStackedWidget):
         id_2 = the_variables.index_id_2 
         if id_1 :
             the_table.model().new_func_show_by_index(id_1,id_2)
-
+    #
     def new_func_show_tableview(self,):
         self.new_func_show_table(self.new_ui_gamelist_tableview)
-
+    #
+    def new_func_show_tableview_2_level(self,):
+        self.new_func_show_table(self.new_ui_gamelist_tableview_2_level)
+    #
     def new_func_show_treeview(self,):
         self.new_func_show_table(self.new_ui_gamelist_treeview)
 

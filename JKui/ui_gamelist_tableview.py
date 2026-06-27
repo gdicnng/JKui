@@ -84,6 +84,8 @@ class My_Table(QTableView):
         self.setShowGrid(False)
 
         self.setTabKeyNavigation(False)
+
+        self.setSortingEnabled(True)
     
     def new_func(self,):
         self.new_table_type = "table_view_1_level"
@@ -157,9 +159,11 @@ class My_Table(QTableView):
 class My_Table_for_2_level(My_Table):
     def __init__(self,*args,**kwargs ):
         super().__init__(*args,**kwargs)
-        #
+        
+    def new_func(self,):
         self.new_table_type = "table_view_2_level"
         self.setObjectName("table_view_2_level")
+        self.setModel(ui_models.Model_for_table_view_2_level(self))
 
 
 

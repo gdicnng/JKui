@@ -8,6 +8,7 @@ from qtpy.QtCore import *
 
 import the_files
 import the_variables
+import ui_models
 
 class Dialog_to_choose_emulator_path(QDialog):  
 
@@ -65,7 +66,7 @@ class Dialog_to_choose_emulator_path(QDialog):
         button.clicked.connect(sys.exit)
         layout.addWidget(button)        
 
-        self.setLayout(layout)
+        
 
     def new_func_set_values(self,mame_path="", mame_working_directory=""):
         self.new_line_edit1.setText(mame_path)
@@ -99,14 +100,6 @@ class Dialog_to_choose_emulator_path(QDialog):
         if file_path :
             print("file_path: ",file_path)
             self.new_line_edit1.setText(file_path[0])
-
-
-class Search_Line(QLineEdit):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.setPlaceholderText("搜索")
-
-        #self.returnPressed.connect(self.new_func_for_search)
 
 class Image_dockwidget(QDockWidget):
 
@@ -282,3 +275,243 @@ class Image_dockwidget(QDockWidget):
     @Slot(bool)
     def new_func_for_visibilityChanged(self,visible):
         self.new_visible = visible
+
+
+# toolbar ,search 
+class Dialog_for_search_options(QDialog):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.setWindowTitle("搜索选项")
+
+        self.new_init = False
+
+        self.new_ignore_case = True
+        self.new_search_columns = tuple()
+        # 列号的数字
+
+        # 手动调用 new_func_init()
+
+    def new_func_init(self):
+        # 数列还没有载入，ui_models.columns 内容为空
+        # 需要时，再画 UI
+
+        if self.new_init:
+            return
+        else:
+            self.new_init = True
+
+            # 一个都不选，表示 全选
+            if not self.new_search_columns:
+                self.new_search_columns = tuple(n for n in range(len(ui_models.columns)))
+
+            # 大小写
+            layout = QVBoxLayout()
+            group_box_1 = QGroupBox("大小写")
+            group_box_layout_2 = QVBoxLayout()
+            self.new_check_box_for_ignore_case = QCheckBox("忽略大小写", self)
+            self.new_check_box_for_ignore_case.setChecked(self.new_ignore_case)
+            #self.new_check_box_for_ignore_case.clicked.connect(self.new_func_check_ignore_case)
+            group_box_layout_2.addWidget(self.new_check_box_for_ignore_case)
+            group_box_1.setLayout(group_box_layout_2)
+            
+            # 搜索范围，选择列
+            group_box_2 = QGroupBox("搜索范围，选择列")
+            group_box_layout_2 = QVBoxLayout()
+
+            self.new_check_box_list = []
+            for n in range( len(ui_models.columns) ):
+                column_name = ui_models.columns[n]
+                the_text = column_name
+                if column_name in the_variables.columns_translation:
+                    the_text = the_variables.columns_translation[column_name]
+                a_check_box = QCheckBox(the_text, self)
+                self.new_check_box_list.append(a_check_box)
+                group_box_layout_2.addWidget(a_check_box)
+                if n in self.new_search_columns:
+                    a_check_box.setChecked(True)
+                else:
+                    a_check_box.setChecked(False)
+            group_box_2.setLayout(group_box_layout_2)
+
+            set_default_button = QPushButton("默认", self)
+            set_default_button.clicked.connect(self.new_func_set_default)
+
+            ok_button = QPushButton("确定", self)
+            ok_button.setDefault(True)
+            ok_button.clicked.connect(self.new_func_for_ok)
+            ok_button.clicked.connect(self.accept)
+
+            cancel_button = QPushButton("取消", self)
+            cancel_button.clicked.connect(self.reject)
+
+            layout.addWidget(group_box_1)
+            layout.addWidget(group_box_2)
+            layout.addWidget(set_default_button)
+            layout.addWidget(ok_button)
+            layout.addWidget(cancel_button)
+
+            self.setLayout(layout)
+
+    def new_func_for_ok(self):
+        if self.new_check_box_for_ignore_case.isChecked():
+            self.new_ignore_case = True
+        else:
+            self.new_ignore_case = False
+
+        print("ignore_case:",self.new_ignore_case)
+
+        temp_set = set()
+        for n in range( len(self.new_check_box_list) ):
+            widget = self.new_check_box_list[n]
+            if widget.isChecked():
+                temp_set.add(n)
+            else:
+                temp_set.discard(n)
+        self.new_search_columns = tuple(sorted(temp_set))
+        
+        print("for ok button:",self.new_ignore_case,self.new_search_columns)
+            
+    def new_func_set_default(self):
+        new_ignore_case = True
+        new_columns = tuple(n for n in range(len(ui_models.columns)))
+        self.new_func_set_value(new_ignore_case,new_columns)
+    
+    def new_func_set_value(self,ignore_case,new_columns):
+        self.new_ignore_case = ignore_case
+
+        # 一个都不选，表示 全选
+        if not new_columns:
+            new_columns = tuple(n for n in range(len(ui_models.columns)))
+
+        self.new_search_columns = tuple(sorted(set(new_columns))) # 去重，排序
+
+        self.new_check_box_for_ignore_case.setChecked(self.new_ignore_case)
+
+        for n in range( len(self.new_check_box_list) ):
+            widget = self.new_check_box_list[n]
+            if n in self.new_search_columns:
+                widget.setChecked(True)
+            else:
+                widget.setChecked(False)
+
+    def new_func_get_value(self):
+        return self.new_ignore_case,self.new_search_columns
+#
+class Line_editor_for_search(QLineEdit):
+    new_signal_for_press_enter = Signal()
+    new_signal_for_press_ctrl_enter = Signal()
+    new_signal_for_press_escape = Signal()
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+    def keyPressEvent(self, event):
+        # Qt.Key_Escape
+        if event.key() == Qt.Key_Enter or event.key() == Qt.Key_Return:
+            if event.modifiers() & Qt.ControlModifier:
+                self.new_signal_for_press_ctrl_enter.emit()
+            else:
+                self.new_signal_for_press_enter.emit()
+        elif event.key() == Qt.Key_Escape:
+            self.clear()
+            self.new_signal_for_press_escape.emit()
+        else:
+            super().keyPressEvent(event)
+#
+class Toolbars_for_search(QToolBar):
+
+    new_signal_for_search = Signal(str,bool,bool,tuple)
+    new_signal_for_clear_search = Signal()
+    # 搜索字符串
+    # 是否正则
+    # 是否忽略大小写
+    # 搜索列 范围 tuple
+
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        self.new_ignore_case = True
+        self.new_search_columns = tuple()
+
+
+        self.new_ui_line_edit = Line_editor_for_search()
+        self.addWidget(self.new_ui_line_edit)
+        self.new_ui_line_edit.setFixedWidth(200)
+        self.new_ui_line_edit.setPlaceholderText("搜索游戏列表")
+        #
+        self.new_ui_line_edit.new_signal_for_press_enter.connect(self.new_func_for_search)        
+        self.new_ui_line_edit.new_signal_for_press_ctrl_enter.connect(self.new_func_for_search_re)
+        self.new_ui_line_edit.new_signal_for_press_escape.connect(self.new_signal_for_clear_search)
+
+        
+        self.new_action_search = QAction("搜索", self)
+        self.new_action_search.triggered.connect(self.new_func_for_search)
+        self.addAction(self.new_action_search)
+
+        self.new_action_search_re = QAction("正则", self)
+        self.new_action_search_re.triggered.connect(self.new_func_for_search_re)
+        self.addAction(self.new_action_search_re)
+
+
+        self.new_action_search_options = QAction("选项", self)
+        self.new_action_search_options.triggered.connect(self.new_func_for_search_options)
+        self.addAction(self.new_action_search_options)
+
+        self.new_action_clear_search = QAction("清除", self)
+        self.new_action_clear_search.triggered.connect(self.new_func_for_clear_search)
+        self.addAction(self.new_action_clear_search)
+
+        self.new_dialog_for_search_options = Dialog_for_search_options()
+
+    def new_func_get_search_settings(self):
+        # 暂时先不设置了
+
+        return self.new_signal_for_clear_search, self.new_search_columns
+    
+    def new_func_for_search(self):
+        print("test search")
+
+        search_string = self.new_ui_line_edit.text()
+
+        search_string=search_string.strip()
+
+        if search_string == "":
+            return
+
+        use_re=False
+        ignore_case, search_columns = self.new_func_get_search_settings()
+
+        self.new_signal_for_search.emit(search_string,use_re,ignore_case,search_columns)
+
+    def new_func_for_search_re(self):
+        print("test search re")
+
+        search_string = self.new_ui_line_edit.text()
+
+        search_string=search_string.strip()
+
+        if search_string == "":
+            return
+
+        use_re=True
+        ignore_case, search_columns = self.new_func_get_search_settings()
+
+        self.new_signal_for_search.emit(search_string,use_re,ignore_case,search_columns)
+
+    def new_func_for_clear_search(self):
+        print("test clear search")
+        self.new_ui_line_edit.clear()
+        self.new_signal_for_clear_search.emit()
+
+    def new_func_for_search_options(self):
+        # 显示选项小窗口
+        print()
+        print("search options")
+
+        print("before:",self.new_ignore_case,self.new_search_columns)
+        self.new_dialog_for_search_options.new_func_init()
+        self.new_dialog_for_search_options.new_func_set_value(self.new_ignore_case,self.new_search_columns)
+        if self.new_dialog_for_search_options.exec_():
+            self.new_ignore_case,self.new_search_columns = self.new_dialog_for_search_options.new_func_get_value()
+            print("after:",self.new_ignore_case,self.new_search_columns)
+            

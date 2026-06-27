@@ -1,6 +1,7 @@
 import sys,os,time,shutil,io
 import pickle
 import locale
+import re
 
 from qtpy.QtWidgets import *
 from qtpy.QtGui import *
@@ -16,6 +17,7 @@ import xml_parse_mame
 import ui_models
 import ui_central_widget
 import the_user_settings_default_value
+import extra_folders
 
 
 
@@ -34,7 +36,9 @@ class TheMainWindow(QMainWindow):
         except:
             pass
         
+        
         self.setWindowIcon( QIcon(icon_pixmap) )
+        
 
         # 用户配置文件
         #self.new_settings = QSettings( "gdicnng" ,the_variables.software_name , self)
@@ -166,6 +170,10 @@ class TheMainWindow(QMainWindow):
         self.new_action_show_tableview = QAction("显示 tableview",self,)
         self.new_action_show_tableview.triggered.connect( self.centralWidget().new_func_show_tableview )
         self.new_ui_menu_gamelist.addAction(self.new_action_show_tableview)
+        # 显示 tableview 2 level
+        self.new_action_show_tableview_2_level = QAction("显示 tableview 2 level",self,)
+        self.new_action_show_tableview_2_level.triggered.connect( self.centralWidget().new_func_show_tableview_2_level )
+        self.new_ui_menu_gamelist.addAction(self.new_action_show_tableview_2_level)
         # 显示 treeview
         self.new_action_show_treeview = QAction("显示 treeview",self,)
         self.new_action_show_treeview.triggered.connect( self.centralWidget().new_func_show_treeview )
@@ -189,12 +197,18 @@ class TheMainWindow(QMainWindow):
         
         self.new_ui_toolbar.addAction(self.new_action_test)
 
-        self.new_ui_toolbar.addSeparator()
-        self.new_ui_line_editor_for_search = QLineEdit()
-        self.new_ui_line_editor_for_search.returnPressed.connect(self.new_func_for_search)
-        self.new_ui_line_editor_for_search.setFixedWidth(200)
+        #self.new_ui_toolbar.addSeparator()
+        #self.new_ui_line_editor_for_search = QLineEdit()
+        #self.new_ui_line_editor_for_search.returnPressed.connect(self.new_func_for_search)
+        #self.new_ui_line_editor_for_search.setFixedWidth(200)
+        #self.new_ui_toolbar.addWidget(self.new_ui_line_editor_for_search)
 
-        self.new_ui_toolbar.addWidget(self.new_ui_line_editor_for_search)
+        self.new_tool_bar_for_search = ui_small_windows.Toolbars_for_search(self)
+        self.new_tool_bar_for_search.setObjectName("tool_bar_for_search")
+        self.new_tool_bar_for_search.setFloatable(False)
+        self.new_tool_bar_for_search.setMovable(False)
+        self.new_tool_bar_for_search.new_signal_for_search.connect(self.new_func_for_search)
+        self.addToolBar(self.new_tool_bar_for_search)
 
     def new_func_test(self):
         print("test")
@@ -479,9 +493,19 @@ class TheMainWindow(QMainWindow):
         ui_models.update_some_value()
 
         # 加载外部索引,wip
+        # external_index
+        # external_index_by_source
         ######
-        external_index = self.new_func_load_external_index()
+        folders_path = self.new_settings.value("extra/folders")
+        print(folders_path)
+        extra_folders.all_dict = {game_id:game_id for game_id in data["set_data"]["all_set"]} # 
+        external_index = extra_folders.get_external_index_data(folders_path,file_extension=".ini")
+        external_index_by_source = extra_folders.get_external_index_data(folders_path,file_extension=".source_ini")
         ui_models.set_value("external_index",external_index)
+        ui_models.set_value("external_index_by_source",external_index_by_source)
+        extra_folders.all_dict = dict() # 清空
+        print(external_index.keys())
+        print(external_index_by_source.keys())
 
         # 加载翻译文件
         self.new_func_load_translation_file()
@@ -810,20 +834,27 @@ class TheMainWindow(QMainWindow):
         current_table = central_widget.currentWidget()
         current_table.model().new_func_show_by_index(id_1,id_2)
     
-    @Slot()
-    def new_func_for_search(self,):
-        # search_string,search_columns=tuple(),ignore_case=True,use_regex=False,
+    @Slot(str,bool,bool,tuple)
+    def new_func_for_search(self,search_string,use_re=False,ignore_case=True,search_columns=tuple(),):
+        # search_string,use_re=False,ignore_case=True,search_columns=tuple(),
+        # 搜索字符串
+        # 是否正则
+        # 是否忽略大小写
+        # 搜索列 范围 tuple
         
-        search_string = self.new_ui_line_editor_for_search.text()
-        search_columns=tuple()
-        ignore_case=True
-        use_regex=False
 
         temp = search_string.strip()
         if temp:
+            if use_re:
+                try:
+                    re.compile(temp)
+                except:
+                    QMessageBox.warning(self,"warning","正则表达式可能出错")
+                    return
+
             central_widget = self.centralWidget()
             current_table = central_widget.currentWidget()
-            current_table.model().new_func_show_search_result(temp)
+            current_table.model().new_func_show_search_result(search_string,use_re=use_re,ignore_case=ignore_case,search_columns=search_columns)
 
 
     def new_func_index_select_remember_after_load_settings(self,):
@@ -836,7 +867,7 @@ class TheMainWindow(QMainWindow):
         except: 
             pass
         if index_id_1:
-            self.new_ui_index.new_func_select_row_by_index_id(index_id_1,index_id_2) 
+            self.new_ui_index.new_func_select_row_by_index_id(index_id_1,index_id_2,scroll_to=True) 
             self.new_func_slot_for_receive_index(index_id_1,index_id_2)
 
 
