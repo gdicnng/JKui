@@ -188,14 +188,13 @@ class TheMainWindow(QMainWindow):
         #self.new_ui_menu_view.addAction(self.new_action_b)
 
     def new_func_createToolBars(self):
-        self.new_ui_toolbar = self.addToolBar("TEST")
-        self.new_ui_toolbar.setObjectName("toolbar") # 不设置，不好保存
-        
+        # test
+        #self.new_ui_toolbar = self.addToolBar("TEST")
+        #self.new_ui_toolbar.setObjectName("toolbar") # 不设置，不好保存
         #self.new_ui_toolbar.setAllowedAreas(Qt.TopToolBarArea)
-        self.new_ui_toolbar.setMovable(False)
-        self.new_ui_toolbar.setFloatable(False)
-        
-        self.new_ui_toolbar.addAction(self.new_action_test)
+        #self.new_ui_toolbar.setMovable(False)
+        #self.new_ui_toolbar.setFloatable(False)
+        #self.new_ui_toolbar.addAction(self.new_action_test)
 
         #self.new_ui_toolbar.addSeparator()
         #self.new_ui_line_editor_for_search = QLineEdit()
@@ -216,30 +215,50 @@ class TheMainWindow(QMainWindow):
     def new_func_createStatusBar(self):
         statusbar = self.statusBar()
 
+        #self.new_ui_statusbar_for_current_number = QLabel(statusbar)
+        #statusbar.addPermanentWidget( self.new_ui_statusbar_for_current_number , 0 )
+        #self.new_ui_statusbar_for_current_number.setVisible(True) 
+        #self.new_ui_statusbar_for_current_number.setText("0")   
+#
+        #a_label = QLabel(statusbar)
+        #statusbar.addPermanentWidget( a_label, 0 )
+        #a_label.setVisible(True)
+        #a_label.setText("/")
+
+        self.new_ui_statusbar_for_total_number = QLabel(statusbar)
+        statusbar.addPermanentWidget( self.new_ui_statusbar_for_total_number , 0 )
+        self.new_ui_statusbar_for_total_number.setVisible(True)
+
+     
+
         self.new_progressbar_on_statusbar = QProgressBar(statusbar)
         self.new_progressbar_on_statusbar.setMinimum(0)
         self.new_progressbar_on_statusbar.setMaximum(0)
         # If minimum and maximum both are set to 0, the bar shows a busy indicator instead of a percentage of steps
-
         statusbar.addWidget( self.new_progressbar_on_statusbar , 1 )
         self.new_progressbar_on_statusbar.setVisible(False)
 
         statusbar.showMessage("StatusBar")
 
+
+
     # dock window
     def new_func_createDockWindows(self):
         
+        self.setDockOptions(QMainWindow.AnimatedDocks | QMainWindow.VerticalTabs | QMainWindow.AllowTabbedDocks | QMainWindow.AllowNestedDocks)
+
+        
         # 目录
         def func_for_index():
-            self.setDockOptions(QMainWindow.AnimatedDocks | QMainWindow.VerticalTabs | QMainWindow.AllowTabbedDocks | QMainWindow.AllowNestedDocks)
             
-            self.new_dock_index = QDockWidget("目录",self,)
+            self.new_dock_index = ui_index.Index_dockwidget("目录",self,)
             self.new_dock_index.setObjectName("index") # 不设置，不好保存
             self.new_dock_index.setAllowedAreas(Qt.AllDockWidgetAreas )
+            features =self.new_dock_index.features()
+            self.new_dock_index.setFeatures(features & (~QDockWidget.DockWidgetFloatable) )
             
-            self.new_ui_index = ui_index.My_index_table()
+            self.new_ui_index = self.new_dock_index.new_ui_index
             
-            self.new_dock_index.setWidget(self.new_ui_index)
             self.addDockWidget(Qt.LeftDockWidgetArea, self.new_dock_index)
             
             self.new_ui_menu_ui_dock_windows.addAction(self.new_dock_index.toggleViewAction())
@@ -488,6 +507,14 @@ class TheMainWindow(QMainWindow):
         ui_models.set_value("parent_set",data["set_data"]["parent_set"])
         ui_models.set_value("clone_set", data["set_data"]["clone_set"])
         print(data["set_data"].keys())
+        #
+        print(str(len(data['set_data']['all_set'])))
+        print(str(len(data['set_data']['all_set'])))
+        print(str(len(data['set_data']['all_set'])))
+        print(str(len(data['set_data']['all_set'])))
+        print(str(len(data['set_data']['all_set'])))
+        print(str(len(data['set_data']['all_set'])))
+        self.new_ui_statusbar_for_total_number.setText( str(len(data['set_data']['all_set'])) )
 
         #
         ui_models.update_some_value()

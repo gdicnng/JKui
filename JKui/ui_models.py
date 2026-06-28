@@ -236,47 +236,8 @@ def update_some_value():
 # 目录用
 index_list = []
 index_has_children = dict()
-index_list_for_search = []
-index_has_children_for_search = dict()
-
-def rebuild_index_bak(top_index_list=None):
-    # 第一层 index_list : 
-    #   主目录 id
-    # 第二层 index_has_children
-    #   主目录 id : 子目录 id 列表
-
-    if top_index_list is None:
-        top_index_list = []
-    
-    global index_list
-    global index_has_children
-    global index_chainmap
-    index_list.clear()
-    index_has_children.clear()
-    index_chainmap = collections.ChainMap(internal_index, external_index,external_index_by_source)
-
-    user_order = top_index_list + list(the_variables.index_order)
-    
-    used_id = set()
-    for index_id in user_order:
-        if index_id in index_chainmap:
-            index_list.append(index_id)
-            used_id.add(index_id)
-    not_in_user_order=[]
-    for index_id in index_chainmap:
-        if index_id not in used_id:
-            not_in_user_order.append(index_id)
-
-    not_in_user_order.sort()
-    index_list = index_list + not_in_user_order
-
-    for parent_index_id in index_list:
-        parent_item = index_chainmap[parent_index_id]
-        if "children" in parent_item:
-            if parent_item["children"]:
-                #print()
-                #print(parent_index_id,parent_item["children"].keys()  )
-                index_has_children[parent_index_id] = sorted( parent_item["children"].keys() )
+index_list_backup = []
+index_has_children_backup = dict()
 
 
 def rebuild_index(top_index_list=None):
@@ -291,6 +252,9 @@ def rebuild_index(top_index_list=None):
     global index_list
     global index_has_children
     global index_chainmap
+    global index_list_backup
+    global index_has_children_backup
+
     index_list.clear()
     index_has_children.clear()
     index_chainmap = collections.ChainMap(internal_index, internal_index_2, external_index,external_index_by_source)
@@ -353,11 +317,10 @@ def rebuild_index(top_index_list=None):
             the_keys = set( parent_item.keys() )
             the_other_keys = the_keys - {"FOLDER_SETTINGS","ROOT_FOLDER"}
             if the_other_keys :
-                index_has_children[parent_index_id] = sorted( the_other_keys )                    
+                index_has_children[parent_index_id] = sorted( the_other_keys )
 
-
-
-
+    index_list_backup = index_list
+    index_has_children_backup = index_has_children
 
 
 
@@ -489,6 +452,47 @@ def func_for_search(search_string,search_object_list=None,use_re=False,ignore_ca
 
     re.purge()
     return result_list
+
+def func_for_index_search(search_string,use_re=False,ignore_case=True,):
+    # 都用 re 写吧，正常的搜索也写成 re 模式，少写一次代码
+    #print("func_for_index_search")
+
+    if use_re:
+        re_string = search_string
+    else:
+        re_string = re.escape(search_string)
+    
+    if ignore_case:
+        p=re.compile(re_string,re.IGNORECASE)
+    else:
+        p=re.compile(re_string)
+    
+    new_list = []
+    new_list_have_children = dict()
+    
+    #print(len(index_list_backup))
+    #print(len(index_has_children_backup))
+
+    for index_id in index_list_backup:
+        temp_children_list =[]
+        if index_id in index_has_children_backup:
+            for child_id in index_has_children_backup[index_id]:
+                if p.search(child_id):
+                    temp_children_list.append(child_id)
+        
+        if temp_children_list:
+            new_list_have_children[index_id] = temp_children_list
+            new_list.append(index_id)
+        else:
+            if index_id.lower().endswith(".ini") or index_id.lower().endswith(".source_ini"):
+                the_text = os.path.basename(index_id)
+            else:
+                the_text = the_variables.index_translation.get(index_id,index_id)
+            
+            if p.search(the_text):
+                new_list.append(index_id)
+                    
+    return new_list,new_list_have_children
 
 
 class Model_for_table_view(QAbstractTableModel):
@@ -1482,7 +1486,7 @@ class Model_for_tree_view(QAbstractItemModel):
 
 
 # index_list = []
-# index_list_for_search = []
+# index_has_children = dict()
 class Model_for_index(QAbstractItemModel):
     def __init__(self,):
         super().__init__()
@@ -1549,7 +1553,7 @@ class Model_for_index(QAbstractItemModel):
                 return self.createIndex( temp,0,1)
         return QModelIndex()
 
-    def new_func_get_index_id_by_index(self, index):
+    def new_func_get_index_id_by_index(self, index): # return id_1,id_2
         id_1,id_2="",""
         
         if index.isValid():
@@ -1563,7 +1567,7 @@ class Model_for_index(QAbstractItemModel):
                 
         return id_1,id_2
     
-    def new_func_find_item(self,index_id_1,index_id_2):
+    def new_func_find_item(self,index_id_1,index_id_2): # return QModelIndex
         row_level_1 = -1
         row_level_2 = -1
 
@@ -1589,9 +1593,31 @@ class Model_for_index(QAbstractItemModel):
         else:
                 return self.createIndex( row_level_2,0,row_level_1 + 2 )  
 
+    def new_func_search_index(self, re_string, use_re=False): 
+        global index_list,index_has_children
 
-                
-        
+        self.beginResetModel()
+
+        index_list ,index_has_children = func_for_index_search(re_string,use_re=use_re)
+
+        self.endResetModel()
+
+    def new_func_cancel_search(self): 
+        #print("cancel search")
+
+        global index_list,index_has_children,index_list_backup,index_has_children_backup
+
+        if index_list_backup is index_list:
+            if index_has_children_backup is index_has_children:
+                print("index,same as backup, do nothing")
+                return
+
+        self.beginResetModel()
+
+        index_list = index_list_backup
+        index_has_children = index_has_children_backup
+
+        self.endResetModel()
 
     
 
@@ -1600,7 +1626,6 @@ class Model_for_index(QAbstractItemModel):
     #     if parent_index.isValid():
     #         return False
     #     return True
-
 
 
 

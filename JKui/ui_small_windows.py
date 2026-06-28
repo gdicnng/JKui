@@ -66,7 +66,7 @@ class Dialog_to_choose_emulator_path(QDialog):
         button.clicked.connect(sys.exit)
         layout.addWidget(button)        
 
-        
+        self.setLayout(layout)
 
     def new_func_set_values(self,mame_path="", mame_working_directory=""):
         self.new_line_edit1.setText(mame_path)
@@ -437,7 +437,7 @@ class Toolbars_for_search(QToolBar):
         self.new_ui_line_edit = Line_editor_for_search()
         self.addWidget(self.new_ui_line_edit)
         self.new_ui_line_edit.setFixedWidth(200)
-        self.new_ui_line_edit.setPlaceholderText("搜索游戏列表")
+        self.new_ui_line_edit.setPlaceholderText("游戏列表搜索")
         #
         self.new_ui_line_edit.new_signal_for_press_enter.connect(self.new_func_for_search)        
         self.new_ui_line_edit.new_signal_for_press_ctrl_enter.connect(self.new_func_for_search_re)
