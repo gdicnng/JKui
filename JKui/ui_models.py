@@ -61,6 +61,10 @@ index_chainmap = collections.ChainMap()
 icon_column_index = -1
 translation_column_index = -1
 id_column_index = -1
+cloneof_column_index = -1 # 状态栏信息用
+romof_column_index = -1 # 状态栏信息用
+status_column_index = -1 # 状态栏信息用
+savestate_column_index = -1 # 状态栏信息用
 parent_have_more_than_1_clone_set = set() # parent_id set
 #parent_to_clone__keys_set = set() 
 
@@ -195,6 +199,10 @@ def update_some_value():
     global translation_column_index
     global id_column_index
     global parent_have_more_than_1_clone_set
+    global cloneof_column_index
+    global romof_column_index
+    global status_column_index
+    global savestate_column_index
     #global parent_to_clone__keys_set
 
     try:
@@ -204,6 +212,26 @@ def update_some_value():
 
     try:
         id_column_index = columns.index("id")
+    except:
+        pass
+
+    try:
+        cloneof_column_index = columns.index("cloneof")
+    except:
+        pass
+
+    try:
+        romof_column_index = columns.index("romof")
+    except:
+        pass
+
+    try:
+        status_column_index = columns.index("status")
+    except:
+        pass
+
+    try:
+        savestate_column_index = columns.index("savestate")
     except:
         pass
 
@@ -330,38 +358,13 @@ def rebuild_index(top_index_list=None):
 
 ####################
 @the_timer
-def get_id_list_from_index(id_1,id_2="",):
+def get_id_list_from_index(id_1,id_2="",filter_the_gamelist = True):
     # 拥有列表、未拥有列表
     # 内部目录
     # 外部目录
     # 外部目录 by source
 
-    the_index = index_chainmap
-    
     temp_result = []
-
-    def get_id_list_from_internal_index(id_1,id_2=""):
-        def for_level_1(id_1):
-            temp = [] # 可能为 list 也可能为 set
-            if id_1 in the_index:
-                if "gamelist" in the_index[id_1]:
-                    temp = the_index[id_1]["gamelist"]
-            return temp
-        
-        def for_level_2(id_1,id_2):
-            temp = [] # 可能为 list 也可能为 set
-            if id_1 in the_index:
-                if "children" in the_index[id_1]:
-                    if id_2 in the_index[id_1]["children"]:
-                        if "gamelist" in the_index[id_1]["children"][id_2]:
-                            temp = the_index[id_1]["children"][id_2]["gamelist"]
-            return temp
-        
-        if id_1 and id_2:
-            return for_level_2(id_1,id_2)
-        elif id_1 and (not id_2):
-            return for_level_1(id_1)
-
 
     # 拥有列表
     if id_1 == "available_set":
@@ -379,13 +382,17 @@ def get_id_list_from_index(id_1,id_2="",):
     else:
         temp_result = misc_funcs.get_id_list_from_internal_index(id_1,id_2)
 
-    if not filter_set: # 不过滤
-        if all_set is temp_result:
-            return all_set
+
+    if filter_the_gamelist:
+        if not filter_set: # 没有过滤内容
+            if all_set is temp_result:
+                return all_set
+            else:
+                return all_set.intersection(temp_result)
         else:
-            return all_set.intersection(temp_result)
+            return all_set.intersection(temp_result) - filter_set
     else:
-        return all_set.intersection(temp_result) - filter_set
+        return temp_result
     
 #########################
 # for test
@@ -394,7 +401,30 @@ def set_game_list_to_all():
     game_list = list(machine_dict.keys())
 ###################
 
+def get_string_for_statusbar(game_id):
+        if game_id not in machine_dict:
+            return ""
+        
+        game_info = machine_dict[game_id]
 
+        cloneof = game_info[cloneof_column_index]
+        if cloneof:cloneof = "主版本为: " + cloneof
+        
+        romof = game_info[romof_column_index]
+        if romof:romof = "romof: " + romof
+        
+        status = game_info[status_column_index]
+        if status:status = "模拟状态: " + status
+        
+        savestate = game_info[savestate_column_index]
+        if savestate:savestate = "存盘状态: " + savestate
+
+        temp_list = []
+        for x in [game_id,cloneof,romof,status,savestate]:
+            if x:
+                temp_list.append(x)
+
+        return " | ".join(temp_list)
 
 
 ###############
@@ -615,9 +645,9 @@ class Model_for_table_view(QAbstractTableModel):
         #self.layoutAboutToBeChanged.emit()
         self.beginResetModel()
         
-        self.new_func_clear_search_data()
+        self.new_func_clear_all_data()
 
-        self.new_game_list_to_show = all_set.intersection( get_id_list_from_index(id_1,id_2) ) 
+        self.new_game_list_to_show = get_id_list_from_index(id_1,id_2) 
         self.new_func_for_sort()
 
         ###
@@ -651,10 +681,10 @@ class Model_for_table_view(QAbstractTableModel):
 
     def new_func_clear_all_data(self):
         print("clear data")
-        self.new_game_list_to_show.clear()
-        self.new_data_remember_for_search.clear()
+        self.new_game_list_to_show = []
+        self.new_data_remember_for_search = []
     def new_func_clear_search_data(self):
-        self.new_data_remember_for_search.clear()
+        self.new_data_remember_for_search = []
 
 
 

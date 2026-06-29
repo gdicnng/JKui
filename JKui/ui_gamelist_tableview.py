@@ -6,41 +6,6 @@ import ui_models
 import the_variables
 
 
-
-class My_model_test(QAbstractTableModel):
-    # 假 数据
-    # 测试 QTableView
-    
-    the_max_row_number = 1000
-    the_max_column_number = 10
-    
-    def __init__(self,*args,**kwargs):
-        super().__init__(*args,**kwargs)
-        #self._data = data
-
-    def data(self, index, role=Qt.DisplayRole):
-        if role == Qt.DisplayRole:
-            #return self._data[index.row()][index.column()] 
-            return "row :" + str(index.row()) + ", column :" + str(index.column())
-
-    def headerData(self,section,orientation,role=Qt.DisplayRole):
-        if role == Qt.DisplayRole:
-            if orientation == Qt.Horizontal:
-                #return header_horizontal[section]
-                return str(section)
-
-            if orientation == Qt.Vertical:
-                #return header_vertical[section]
-                return str(section)
-
-    def rowCount(self, parent=QModelIndex()):
-        return self.the_max_row_number
-
-    def columnCount(self, parent=QModelIndex()):  
-        # 相同长度
-        return self.the_max_column_number
-
-
 class My_Table(QTableView):
     def __init__(self,*args,**kwargs ):
         super().__init__(*args,**kwargs)

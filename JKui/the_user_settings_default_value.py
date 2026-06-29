@@ -35,7 +35,7 @@ warning_path                  .\warning
 """
 
 default_value = {
-    "mame/translation_file": r".\mame.lst",
+    "mame/translation_file": "mame.lst",
 
     "ui/icon_size_for_gamelist": 16,
     "ui/icon_size_for_icon_mode": 16,

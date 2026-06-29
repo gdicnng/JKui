@@ -63,12 +63,9 @@ class TheMainWindow(QMainWindow):
         self.new_func_creatCentralWidget()
         self.new_func_createActions()
         self.new_func_createMenus()
-        self.new_func_createToolBars()
         self.new_func_createStatusBar()
-        
-        
-
         self.new_func_createDockWindows()
+        self.new_func_createToolBars()
 
 
 
@@ -80,6 +77,8 @@ class TheMainWindow(QMainWindow):
         self.new_ui_central_widget = ui_central_widget.TheCentralWidget(self)
         self.new_ui_central_widget.setObjectName("central_widget")
         self.setCentralWidget(self.new_ui_central_widget)
+        
+        self.new_ui_central_widget.new_signal_for_id_change.connect( self.new_func_slot_for_receive_id_change )
 
     def new_func_createActions(self):
         
@@ -187,38 +186,16 @@ class TheMainWindow(QMainWindow):
         #self.new_ui_menu_view = self.menuBar().addMenu("view")
         #self.new_ui_menu_view.addAction(self.new_action_b)
 
-    def new_func_createToolBars(self):
-        # test
-        #self.new_ui_toolbar = self.addToolBar("TEST")
-        #self.new_ui_toolbar.setObjectName("toolbar") # 不设置，不好保存
-        #self.new_ui_toolbar.setAllowedAreas(Qt.TopToolBarArea)
-        #self.new_ui_toolbar.setMovable(False)
-        #self.new_ui_toolbar.setFloatable(False)
-        #self.new_ui_toolbar.addAction(self.new_action_test)
-
-        #self.new_ui_toolbar.addSeparator()
-        #self.new_ui_line_editor_for_search = QLineEdit()
-        #self.new_ui_line_editor_for_search.returnPressed.connect(self.new_func_for_search)
-        #self.new_ui_line_editor_for_search.setFixedWidth(200)
-        #self.new_ui_toolbar.addWidget(self.new_ui_line_editor_for_search)
-
-        self.new_tool_bar_for_search = ui_small_windows.Toolbars_for_search(self)
-        self.new_tool_bar_for_search.setObjectName("tool_bar_for_search")
-        self.new_tool_bar_for_search.setFloatable(False)
-        self.new_tool_bar_for_search.setMovable(False)
-        self.new_tool_bar_for_search.new_signal_for_search.connect(self.new_func_for_search)
-        self.addToolBar(self.new_tool_bar_for_search)
-
     def new_func_test(self):
         print("test")
 
     def new_func_createStatusBar(self):
         statusbar = self.statusBar()
 
-        #self.new_ui_statusbar_for_current_number = QLabel(statusbar)
-        #statusbar.addPermanentWidget( self.new_ui_statusbar_for_current_number , 0 )
-        #self.new_ui_statusbar_for_current_number.setVisible(True) 
-        #self.new_ui_statusbar_for_current_number.setText("0")   
+        self.new_ui_statusbar_for_current_number = QLabel(statusbar)
+        statusbar.addPermanentWidget( self.new_ui_statusbar_for_current_number , 0 )
+        self.new_ui_statusbar_for_current_number.setVisible(True) 
+        #self.new_ui_statusbar_for_current_number.setText("0/")
 #
         #a_label = QLabel(statusbar)
         #statusbar.addPermanentWidget( a_label, 0 )
@@ -239,8 +216,6 @@ class TheMainWindow(QMainWindow):
         self.new_progressbar_on_statusbar.setVisible(False)
 
         statusbar.showMessage("StatusBar")
-
-
 
     # dock window
     def new_func_createDockWindows(self):
@@ -356,6 +331,50 @@ class TheMainWindow(QMainWindow):
         dock_window_1.setVisible(True)
         dock_window_2 = getattr(self,"new_dock_image_2")
         dock_window_2.setVisible(True)
+
+
+    def new_func_createToolBars(self):
+        # 目录
+        self.new_toolbar_for_index = self.addToolBar("目录切换")
+        self.new_toolbar_for_index.setObjectName("toolbar_for_index")
+        self.new_toolbar_for_index.setAllowedAreas(Qt.TopToolBarArea)
+        self.new_toolbar_for_index.setMovable(False)
+        self.new_toolbar_for_index.setFloatable(False)
+        new_action = QAction("1",self,)
+        new_action.setChecked(False)
+        new_action.setText("=")
+        self.new_index_show_action = self.new_dock_index.toggleViewAction() # 这个原生的 action ，选中时会高亮
+        new_action.triggered.connect( self.new_index_show_action.trigger )
+        self.new_toolbar_for_index.addAction(new_action)
+
+    
+        self.new_toolbar_for_gamelist = self.addToolBar("列表切换")
+        self.new_toolbar_for_gamelist.setObjectName("toolbar_for_gamelist")
+        self.new_toolbar_for_gamelist.setAllowedAreas(Qt.TopToolBarArea)
+        self.new_toolbar_for_gamelist.setMovable(False)
+        self.new_toolbar_for_gamelist.setFloatable(False)
+        new_action_tableview = QAction("1",self,)
+        #new_action_tableview.setCheckable(True)
+        new_action_tableview.triggered.connect( self.centralWidget().new_func_show_tableview )
+        new_action_tableview_2_level = QAction("2",self,)
+        new_action_tableview_2_level.triggered.connect( self.centralWidget().new_func_show_tableview_2_level )
+        new_action_treeview = QAction("3",self,)
+        new_action_treeview.triggered.connect( self.centralWidget().new_func_show_treeview )
+
+        self.new_toolbar_for_gamelist.addAction(new_action_tableview)
+        self.new_toolbar_for_gamelist.addAction(new_action_tableview_2_level)
+        self.new_toolbar_for_gamelist.addAction(new_action_treeview)
+        #self.new_toolbar_for_gamelist.addSeparator()
+
+        self.new_tool_bar_for_search = ui_small_windows.Toolbars_for_search(self)
+        self.new_tool_bar_for_search.setObjectName("toolbar_for_search")
+        self.new_tool_bar_for_search.setWindowTitle("搜索栏")
+        self.new_tool_bar_for_search.setFloatable(False)
+        #self.new_tool_bar_for_search.setMovable(False)
+        self.new_tool_bar_for_search.setAllowedAreas(Qt.TopToolBarArea)
+        self.new_tool_bar_for_search.new_signal_for_search.connect(self.new_func_for_search)
+        self.addToolBar(self.new_tool_bar_for_search)
+
 
     ####################
 
@@ -896,6 +915,22 @@ class TheMainWindow(QMainWindow):
         if index_id_1:
             self.new_ui_index.new_func_select_row_by_index_id(index_id_1,index_id_2,scroll_to=True) 
             self.new_func_slot_for_receive_index(index_id_1,index_id_2)
+
+    @Slot(str)
+    def new_func_slot_for_receive_id_change(self,game_id):
+        
+        if not game_id:
+            return
+        
+        the_string = ui_models.get_string_for_statusbar(game_id)
+
+        if the_string:
+            self.statusBar().showMessage(the_string)
+
+    @Slot(int)
+    def new_func_slot_for_receive_gamelist_number_change(self,number):
+        self.new_ui_statusbar_for_current_number.setText( str(number)+"/" )
+
 
 
 #####

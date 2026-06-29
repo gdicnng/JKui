@@ -14,6 +14,7 @@ import the_variables
 
 class TheCentralWidget(QStackedWidget):
     new_signal_for_id_change=Signal(str,)#id
+    new_signal_for_gamelist_number_change=Signal(int,) # 列表数量
 
     def __init__(self,parent=None):
         super().__init__(parent)
