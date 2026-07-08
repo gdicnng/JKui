@@ -198,11 +198,12 @@ def update_some_value():
     global icon_column_index
     global translation_column_index
     global id_column_index
-    global parent_have_more_than_1_clone_set
     global cloneof_column_index
     global romof_column_index
     global status_column_index
     global savestate_column_index
+
+    global parent_have_more_than_1_clone_set
     #global parent_to_clone__keys_set
 
     try:
@@ -621,7 +622,7 @@ class Model_for_table_view(QAbstractTableModel):
             return machine_dict[game_id][column]
         
         sort_key_func = sort_key_func_2
-        if the_variables.sort_colums_use_locale:
+        if the_variables.sort_use_locale:
             if column in the_variables.sort_colums_use_locale:
                 sort_key_func = sort_key_func_1
         if column == id_column_index:
@@ -720,7 +721,7 @@ def func_for_sort_table_view_2_level(column=None,reverse=False,games_to_be_sorte
         return machine_dict[game_id][column]
     #
     sort_key_func = sort_key_func_2
-    if the_variables.sort_colums_use_locale:
+    if the_variables.sort_use_locale:
         if column in the_variables.sort_colums_use_locale:
             sort_key_func = sort_key_func_1
     if column == id_column_index:
@@ -841,7 +842,7 @@ def func_for_sort_table_view_2_level_bak(column=None,reverse=False,games_to_be_s
         return machine_dict[game_id][column]
     #
     sort_key_func = sort_key_func_2
-    if the_variables.sort_colums_use_locale:
+    if the_variables.sort_use_locale:
         if column in the_variables.sort_colums_use_locale:
             sort_key_func = sort_key_func_1
     if column == id_column_index:
@@ -1114,7 +1115,7 @@ def func_for_sort_treeview(column=None,reverse=False,games_to_be_sorted=None):
         return machine_dict[game_id][column]
     #
     sort_key_func = sort_key_func_2
-    if the_variables.sort_colums_use_locale:
+    if the_variables.sort_use_locale:
         if column in the_variables.sort_colums_use_locale:
             sort_key_func = sort_key_func_1
     if column == id_column_index:
@@ -1367,7 +1368,7 @@ class Model_for_tree_view(QAbstractItemModel):
             return machine_dict[game_id][column]
 
         sort_key_func = sort_key_func_2
-        if the_variables.sort_colums_use_locale:
+        if the_variables.sort_use_locale:
             if column in the_variables.sort_colums_use_locale:
                 sort_key_func = sort_key_func_1
         if column == id_column_index:

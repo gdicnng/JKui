@@ -96,7 +96,7 @@ class TheCentralWidget(QStackedWidget):
                 
                 temp_text = "gamelist_table/" + object_name 
                 settings.setValue(temp_text, header_state)
-                print(object_name,"save data",temp_text)
+                print("table header save data :",object_name,temp_text)
 
 
 
@@ -128,7 +128,7 @@ class TheCentralWidget(QStackedWidget):
                     header_state = settings.value(temp_text)
                     if header_state:
                         load_ok = header.restoreState(header_state)
-                        print(widget.objectName(),"load data",temp_text,load_ok)
+                        print("table header load data :",widget.objectName(),temp_text,load_ok)
                 except:
                     pass
 
@@ -144,14 +144,15 @@ class TheCentralWidget(QStackedWidget):
                     self.setCurrentWidget(widget)
                     break
 
-    def new_func_start_emulator(self,game_id,game_info=None,hide=True,keypress_event=None,):
+    def new_func_start_emulator(self,game_id="",game_info=None,hide=True,keypress_event=None,):
         if not game_info : game_info = []
         print()
         print("start emulator",game_id)
         print("hide UI",hide)
         
         command_list=[]
-        command_list.append(game_id)
+        if game_id:# 空模拟器
+            command_list.append(game_id)
 
         settings = self.parentWidget().new_settings
         mame_exe_path = settings.value("mame/path") 
@@ -168,7 +169,7 @@ class TheCentralWidget(QStackedWidget):
             self.new_buffer_to_hold_error_data = io.BytesIO()
             self.new_process = QProcess()
             self.new_process.setWorkingDirectory(mame_working_directory)
-            self.new_process.setProcessChannelMode(QProcess.ForwardedChannels)
+            #self.new_process.setProcessChannelMode(QProcess.ForwardedChannels)
             self.new_process.setProcessChannelMode(QProcess.ForwardedOutputChannel)
             self.new_process.readyReadStandardError.connect(lambda: self.new_buffer_to_hold_error_data.write(self.new_process.readAllStandardError().data()))
             self.new_process.finished.connect(self.parentWidget().show)

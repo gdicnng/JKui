@@ -18,6 +18,7 @@ import ui_models
 import ui_central_widget
 import the_user_settings_default_value
 import extra_folders
+import extra_database
 
 
 
@@ -92,18 +93,16 @@ class TheMainWindow(QMainWindow):
         #self.new_action_save_settings.triggered.connect( self.new_func_save_settings )
         
     def new_func_createMenus(self):
-        self.new_ui_menu_ui = self.menuBar().addMenu("UI")
-        #self.new_ui_menu_ui.addAction(self.new_action_save_settings)
-        #self.new_ui_menu_ui.addAction(self.new_action_load_settings)
+        self.new_menu_ui = self.menuBar().addMenu("UI")
+        #self.new_menu_ui.addAction(self.new_action_save_settings)
+        #self.new_menu_ui.addAction(self.new_action_load_settings)
         
-        self.new_ui_menu_ui.addSeparator()
-        self.new_ui_menu_ui_dock_windows = self.new_ui_menu_ui.addMenu("显示/隐藏 周边窗口")
         
-        self.new_ui_menu_ui.addSeparator()
-        self.new_ui_menu_ui_style = self.new_ui_menu_ui.addMenu("style")
-        self.new_ui_menu_ui_qss = self.new_ui_menu_ui.addMenu("qss")
+        self.new_menu_ui.addSeparator()
+        self.new_menu_ui_style = self.new_menu_ui.addMenu("style")
+        self.new_menu_ui_qss = self.new_menu_ui.addMenu("qss")
         
-        self.new_ui_menu_ui.addSeparator()
+        self.new_menu_ui.addSeparator()
         
         # UI → style
         def make_menu_for_sytle():
@@ -125,7 +124,7 @@ class TheMainWindow(QMainWindow):
                 
                 self.new_action_group_for_style.addAction(action)
                 
-                self.new_ui_menu_ui_style.addAction(action)
+                self.new_menu_ui_style.addAction(action)
         
         make_menu_for_sytle()
         
@@ -136,8 +135,8 @@ class TheMainWindow(QMainWindow):
             # 重置按钮
             action =  QAction("重置",self,)
             action.triggered.connect(self.new_func_clear_qss)
-            self.new_ui_menu_ui_qss.addAction( action )
-            self.new_ui_menu_ui_qss.addSeparator()
+            self.new_menu_ui_qss.addAction( action )
+            self.new_menu_ui_qss.addSeparator()
             
             self.new_action_group_for_qss=QActionGroup(self)
             
@@ -159,26 +158,67 @@ class TheMainWindow(QMainWindow):
                 action.triggered.connect( self.new_func_load_qss_file_by_menu )
                 action.setCheckable(True)
                 self.new_action_group_for_qss.addAction(action)
-                self.new_ui_menu_ui_qss.addAction( action )
+                self.new_menu_ui_qss.addAction( action )
         make_menu_for_qss()
         
+        ##### 语言
+        self.new_menu_language = self.menuBar().addMenu("语言/language")
+
+        ##### 设置
+        self.new_menu_settings = self.menuBar().addMenu("设置")
+        #
+        self.new_action_emulator_path = QAction("模拟器路径",self,)
+        #self.new_action_emulator_path.triggered.connect( h )
+        self.new_menu_settings.addAction(self.new_action_emulator_path)
+        #
+        self.new_action_emulator_settings = QAction("模拟器设置",self,)
+        self.new_action_emulator_settings.triggered.connect( self.centralWidget().new_func_start_emulator )
+        self.new_menu_settings.addAction(self.new_action_emulator_settings)
+        #
+        self.new_action_extra_path = QAction("周边路径",self,)
+        self.new_menu_settings.addAction(self.new_action_extra_path)
 
         ##### 游戏列表
-        self.new_ui_menu_gamelist=self.menuBar().addMenu("游戏列表")
+        self.new_menu_gamelist=self.menuBar().addMenu("游戏列表")
         # 显示 tableview
         self.new_action_show_tableview = QAction("显示 tableview",self,)
         self.new_action_show_tableview.triggered.connect( self.centralWidget().new_func_show_tableview )
-        self.new_ui_menu_gamelist.addAction(self.new_action_show_tableview)
+        self.new_menu_gamelist.addAction(self.new_action_show_tableview)
         # 显示 tableview 2 level
         self.new_action_show_tableview_2_level = QAction("显示 tableview 2 level",self,)
         self.new_action_show_tableview_2_level.triggered.connect( self.centralWidget().new_func_show_tableview_2_level )
-        self.new_ui_menu_gamelist.addAction(self.new_action_show_tableview_2_level)
+        self.new_menu_gamelist.addAction(self.new_action_show_tableview_2_level)
         # 显示 treeview
         self.new_action_show_treeview = QAction("显示 treeview",self,)
         self.new_action_show_treeview.triggered.connect( self.centralWidget().new_func_show_treeview )
-        self.new_ui_menu_gamelist.addAction(self.new_action_show_treeview)
+        self.new_menu_gamelist.addAction(self.new_action_show_treeview)
+        # 本地排序
+        self.new_menu_gamelist.addSeparator()
+        action_set_sort_use_locale = QAction("本地排序(仅翻译这一列)",self,)
+        action_set_sort_use_locale.setCheckable(True)
+        try:    the_variables.sort_use_locale = self.new_settings.value("gamelist/sort_use_locale",type=bool)
+        except: the_variables.sort_use_locale = False
+        action_set_sort_use_locale.setChecked(the_variables.sort_use_locale)
+        def sort_use_locale(checked):
+            if checked:
+                the_variables.sort_use_locale = True
+            else:
+                the_variables.sort_use_locale = False
+        action_set_sort_use_locale.toggled.connect( sort_use_locale )
+        self.new_menu_gamelist.addAction(action_set_sort_use_locale)
+        self.new_menu_gamelist.addSeparator()
 
-        self.new_ui_menu_other = self.menuBar().addMenu("其它")
+
+        ##### 周边
+        self.new_menu_extra = self.menuBar().addMenu("周边")
+        self.new_menu_for_show_dock_windows = self.new_menu_extra.addMenu("显示/隐藏 周边窗口")
+        #self.new_menu_for_load_extra_text = self.new_menu_extra.addMenu("重新加载周边文本")
+
+        action_for_load_extra_text = QAction("重新加载周边文本",self,)
+        action_for_load_extra_text.triggered.connect(self.new_func_load_extra_text_to_database)
+        self.new_menu_extra.addAction(action_for_load_extra_text)
+        #self.new_menu_for_load_extra_text.addAction(self.new_func_load_extra_text_to_database)
+
         self.new_ui_menu_other = self.menuBar().addMenu("其它")
         self.new_ui_menu_other.addAction(self.new_action_test)
         self.new_ui_menu_other.addAction(self.new_action_test_progressbar)
@@ -220,8 +260,9 @@ class TheMainWindow(QMainWindow):
     # dock window
     def new_func_createDockWindows(self):
         
-        self.setDockOptions(QMainWindow.AnimatedDocks | QMainWindow.VerticalTabs | QMainWindow.AllowTabbedDocks | QMainWindow.AllowNestedDocks)
+        extra_dock_window_list = []
 
+        self.setDockOptions(QMainWindow.AnimatedDocks | QMainWindow.VerticalTabs | QMainWindow.AllowTabbedDocks | QMainWindow.AllowNestedDocks)
         
         # 目录
         def func_for_index():
@@ -236,54 +277,33 @@ class TheMainWindow(QMainWindow):
             
             self.addDockWidget(Qt.LeftDockWidgetArea, self.new_dock_index)
             
-            self.new_ui_menu_ui_dock_windows.addAction(self.new_dock_index.toggleViewAction())
             self.new_ui_index.new_signal_change_index.connect(self.new_func_slot_for_receive_index)
         func_for_index()
-        
-        self.new_ui_menu_ui_dock_windows.addSeparator()
-        
-        # 创建 重复 类型的 dock window
-        def func_for_make_dock_window(ui_type,title_prefix,object_name_prefix,number = 1): # range(1,number)
-            
-            if number < 1 : return
-            
-            # 小窗口 1-5
-            for n in range(1,number + 1):
                 
-                title       = title_prefix + str(n)
-                object_name = object_name_prefix + str(n)
-                
-                # self.new_dock_image_n
-                # self.new_dock_text_n
-                variable_name = "new_dock_" + object_name_prefix + str(n)
-                
-                print()
-                print(title)
-                print(object_name)
-                print(variable_name)
-                
-                setattr(self,variable_name,QDockWidget(title, self), )
-                dock_window = getattr( self, variable_name)
-                
-                dock_window.setObjectName( object_name )
-                dock_window.setAllowedAreas(Qt.AllDockWidgetAreas )
-                
-                child_window = ui_type(dock_window)
-                dock_window.setWidget(child_window)
-                
-                self.addDockWidget(Qt.RightDockWidgetArea, dock_window)
-                
-                # 隐藏
-                dock_window.setVisible(False) 
-                
-                # 菜单
-                self.new_ui_menu_ui_dock_windows.addAction(dock_window.toggleViewAction())
-        
-        # 文本
-        func_for_make_dock_window( QTextEdit, "文本_", "text_" , number = 8 )
-        self.new_ui_menu_ui_dock_windows.addSeparator()
+
+        ########
+        # extras text
+        #
+        # history.xml
+        dock_window_for_history_xml = ui_small_windows.Text_dockwidget_for_history("history.xml",self)
+        dock_window_for_history_dat = ui_small_windows.Text_dockwidget_for_history_dat("history.dat",self)
+        dock_window_for_gameinit_dat = ui_small_windows.Text_dockwidget_for_gameinit("gameinit.dat",self)
+        #dock_window_for_mameinfo_dat = ui_small_windows.Text_dockwidget_for_mameinfo("mameinfo.dat",self)
+
+        for text_dock_window in [
+                    dock_window_for_history_xml,
+                    dock_window_for_history_dat,
+                    dock_window_for_gameinit_dat,
+                    #dock_window_for_mameinfo_dat,
+                    ]:
+            extra_dock_window_list.append(text_dock_window)
+            text_dock_window.setAllowedAreas(Qt.AllDockWidgetAreas )
+            self.addDockWidget(Qt.RightDockWidgetArea, text_dock_window)
+            text_dock_window.setVisible(False) 
 
 
+
+        # extras 图片
         def func_for_image_dockwindow(title_prefix,object_name_prefix,number = 1):
             if number < 1 : return
             
@@ -297,13 +317,14 @@ class TheMainWindow(QMainWindow):
                 # self.new_dock_text_n
                 variable_name = "new_dock_" + object_name_prefix + str(n)
                 
-                print()
-                print(title)
-                print(object_name)
-                print(variable_name)
+                #print()
+                #print(title)
+                #print(object_name)
+                #print(variable_name)
                 
                 setattr(self,variable_name,ui_small_windows.Image_dockwidget(title, self), )
                 dock_window = getattr( self, variable_name)
+                extra_dock_window_list.append(dock_window)
                 
                 dock_window.setObjectName( object_name )
                 dock_window.setAllowedAreas(Qt.AllDockWidgetAreas )
@@ -314,15 +335,10 @@ class TheMainWindow(QMainWindow):
                 # 隐藏
                 dock_window.setVisible(False) 
                 
-                # 菜单
-                self.new_ui_menu_ui_dock_windows.addAction(dock_window.toggleViewAction())
 
-                self.centralWidget().new_signal_for_id_change.connect(dock_window.new_slot_for_id_change)
-
-        # 图片
+        #
         func_for_image_dockwindow("图片_","image_",number=the_variables.image_dockwidget_numbers)
-        #func_for_make_dock_window( QLabel   , "图片_", "image_", number = 20 )
-        self.new_ui_menu_ui_dock_windows.addSeparator()
+        self.new_menu_for_show_dock_windows.addSeparator()
         
 
         
@@ -331,7 +347,15 @@ class TheMainWindow(QMainWindow):
         dock_window_1.setVisible(True)
         dock_window_2 = getattr(self,"new_dock_image_2")
         dock_window_2.setVisible(True)
+        
 
+        # index,添加到菜单
+        self.new_menu_for_show_dock_windows.addAction(self.new_dock_index.toggleViewAction())
+        for extra_dock_window in extra_dock_window_list:
+            # extras 选中项变化，连接信号槽
+            self.centralWidget().new_signal_for_id_change.connect(extra_dock_window.new_slot_for_id_change)
+            # extras 添加到菜单
+            self.new_menu_for_show_dock_windows.addAction(extra_dock_window.toggleViewAction())
 
     def new_func_createToolBars(self):
         # 目录
@@ -382,6 +406,9 @@ class TheMainWindow(QMainWindow):
         print()
         print("close")
         self.new_func_save_settings()
+
+        if extra_database.conn is not None:
+            extra_database.conn.close()
         
         super().closeEvent(event)
 
@@ -527,12 +554,6 @@ class TheMainWindow(QMainWindow):
         ui_models.set_value("clone_set", data["set_data"]["clone_set"])
         print(data["set_data"].keys())
         #
-        print(str(len(data['set_data']['all_set'])))
-        print(str(len(data['set_data']['all_set'])))
-        print(str(len(data['set_data']['all_set'])))
-        print(str(len(data['set_data']['all_set'])))
-        print(str(len(data['set_data']['all_set'])))
-        print(str(len(data['set_data']['all_set'])))
         self.new_ui_statusbar_for_total_number.setText( str(len(data['set_data']['all_set'])) )
 
         #
@@ -550,8 +571,8 @@ class TheMainWindow(QMainWindow):
         ui_models.set_value("external_index",external_index)
         ui_models.set_value("external_index_by_source",external_index_by_source)
         extra_folders.all_dict = dict() # 清空
-        print(external_index.keys())
-        print(external_index_by_source.keys())
+        #print(external_index.keys())
+        #print(external_index_by_source.keys())
 
         # 加载翻译文件
         self.new_func_load_translation_file()
@@ -575,6 +596,12 @@ class TheMainWindow(QMainWindow):
         #ui_models.set_game_list_to_all()
         #self.new_ui_central_widget.new_func_refresh()
 
+        # 更新标题
+        if data["mame_version"]:
+            temp = str( data["mame_version"] )
+            temp = temp.strip()
+            self.setWindowTitle(the_variables.software_name + "  -  " + temp)
+        
         #初始化之后，读取的设置
         self.centralWidget().new_func_for_load_settings()
         self.new_func_index_select_remember_after_load_settings()
@@ -649,12 +676,13 @@ class TheMainWindow(QMainWindow):
             self.new_func_load_qss_file_at_start(qss_file)
         
         # 排序
-        try:    the_variables.sort_column = self.new_settings.value("gamelist/sort_column").toInt()
+        try:    the_variables.sort_column = self.new_settings.value("gamelist/sort_column",type=int)
         except: the_variables.sort_column = -1
-        try:    the_variables.sort_reverse = self.new_settings.value("gamelist/sort_reverse").toBool()
+        try:    the_variables.sort_reverse = self.new_settings.value("gamelist/sort_reverse",type=bool)
         except: the_variables.sort_reverse = False
-        try:    the_variables.sort_use_locale = self.new_settings.value("gamelist/sort_use_locale").toBool()
+        try:    the_variables.sort_use_locale = self.new_settings.value("gamelist/sort_use_locale",type=bool)
         except: the_variables.sort_use_locale = False
+
 
     @Slot()
     def new_func_load_qss_file_by_menu(self,):
@@ -904,6 +932,8 @@ class TheMainWindow(QMainWindow):
 
 
     def new_func_index_select_remember_after_load_settings(self,):
+        print()
+        print("index select the remembered one")
         #
         index_id_1 = ""
         index_id_2 = ""
@@ -914,7 +944,7 @@ class TheMainWindow(QMainWindow):
             pass
         if index_id_1:
             self.new_ui_index.new_func_select_row_by_index_id(index_id_1,index_id_2,scroll_to=True) 
-            self.new_func_slot_for_receive_index(index_id_1,index_id_2)
+            #self.new_func_slot_for_receive_index(index_id_1,index_id_2)
 
     @Slot(str)
     def new_func_slot_for_receive_id_change(self,game_id):
@@ -930,6 +960,54 @@ class TheMainWindow(QMainWindow):
     @Slot(int)
     def new_func_slot_for_receive_gamelist_number_change(self,number):
         self.new_ui_statusbar_for_current_number.setText( str(number)+"/" )
+
+    def new_func_load_extra_text_to_database(self,):
+        #self.new_func_show_progress_bar()
+        settings = self.new_settings
+        #ui_models.parent_set
+
+        if extra_database.conn is None:
+            extra_database.connect_database()
+        
+        extra_database.delete_table()
+
+        history_xml_path = settings.value("extra/history")
+        if os.path.isfile(history_xml_path):
+            print(history_xml_path)
+            extra_database.update_history(extra_database.conn,history_xml_path)
+
+        history_dat_path = settings.value("extra/history_dat")
+        if os.path.isfile(history_dat_path):
+            print(history_dat_path)
+            extra_database.update_history_2(extra_database.conn,history_dat_path)
+
+        gameinit_path = settings.value("extra/gameinit")
+        if os.path.isfile(gameinit_path):
+            print(gameinit_path)
+            extra_database.update_gameinit(extra_database.conn,gameinit_path)
+
+        mameinfo_path = settings.value("extra/mameinfo")
+        if os.path.isfile(mameinfo_path):
+            print(mameinfo_path)
+            extra_database.update_mameinfo(extra_database.conn,mameinfo_path)
+
+        messinfo_path = settings.value("extra/messinfo")
+        if os.path.isfile(messinfo_path):
+            print(messinfo_path)
+            extra_database.update_messinfo(extra_database.conn,messinfo_path)
+
+        command_path = settings.value("extra/command")
+        if os.path.isfile(command_path):
+            print(command_path)
+            extra_database.update_command(extra_database.conn,command_path)
+
+        command_english_path = settings.value("extra/command_english")
+        if os.path.isfile(command_english_path):
+            print(command_english_path)
+            extra_database.update_command_english(extra_database.conn,command_english_path)
+
+        print("load extra text to database done")
+        #self.new_func_progressbar_hide()
 
 
 

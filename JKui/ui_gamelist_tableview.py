@@ -25,25 +25,28 @@ class My_Table(QTableView):
         
         # 单选、多选
         self.setSelectionMode(QAbstractItemView.SingleSelection )
-        #   enum QAbstractItemView::SelectionMode
 
         # 列标题，上侧
-        horizontal_header = self.horizontalHeader()
         #   点击 标题
-        horizontal_header.setSectionsClickable(True)
+        self.horizontalHeader().setSectionsClickable(True)
         #   拖动
-        horizontal_header.setSectionsMovable(True)
+        self.horizontalHeader().setSectionsMovable(True)
         #   第一列，禁止拖动
-        horizontal_header.setFirstSectionMovable(False)
+        self.horizontalHeader().setFirstSectionMovable(False)
+        #   关闭列标题高亮，阻止选中时字体加粗
+        #   没有效果 ？？？
+        #   但是小片段代码测试，有效 ？？？
+        self.horizontalHeader().setHighlightSections(False)
 
         # 行标题，左侧
-        vertical_header = self.verticalHeader()
         #   禁止用户变化行高度
-        vertical_header.setSectionResizeMode(QHeaderView.Fixed) ########
+        self.verticalHeader().setSectionResizeMode(QHeaderView.Fixed) ########
         #   不显示，行标题
-        vertical_header.setVisible(False)
+        self.verticalHeader().setVisible(False)
         #   行高度
-        #vertical_header.setDefaultSectionSize(50)
+        #self.verticalHeader().setDefaultSectionSize(80)
+        self.verticalHeader().setHighlightSections(False)
+        
         
         # 不显示 单元格
         self.setShowGrid(False)

@@ -32,17 +32,6 @@ class My_Tree_View(QTreeView):
         
         # 单选、多选
         self.setSelectionMode(QAbstractItemView.SingleSelection )
-
-        ## 列标题，上侧
-        #horizontal_header = self.horizontalHeader()
-        ##   点击 标题
-        #horizontal_header.setSectionsClickable(True)
-        ##   拖动
-        #horizontal_header.setSectionsMovable(True)
-        ##   第一列，禁止拖动
-        #horizontal_header.setFirstSectionMovable(False)
-
-        #self.verticalHeader().setVisible(False)
     
     def new_func_set_model(self,):
         self.setModel(ui_models.Model_for_tree_view(self))

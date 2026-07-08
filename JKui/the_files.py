@@ -1,6 +1,7 @@
 import os
 import pkgutil
 import the_variables
+import my_resource
 
 
 current_working_directory = os.getcwd()
@@ -11,7 +12,9 @@ user_config_file = os.path.join(folder_temporary, "JKui.ini")
 
 folder_qss = os.path.join(folder_temporary, "qss")
 
-data_file = os.path.join(folder_temporary ,"cache_data.bin") 
+data_file = os.path.join(folder_temporary ,"cache_data.pickle") 
+
+extra_database_file = os.path.join(folder_temporary ,"extra.db") 
 
 #文件的二进制数据
 icon_for_mainwindow = pkgutil.get_data("my_resource", "icon_for_mainwindow.png")

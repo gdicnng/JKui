@@ -9,6 +9,8 @@ from qtpy.QtCore import *
 import the_files
 import the_variables
 import ui_models
+import extra_database
+
 
 class Dialog_to_choose_emulator_path(QDialog):  
 
@@ -101,6 +103,8 @@ class Dialog_to_choose_emulator_path(QDialog):
             print("file_path: ",file_path)
             self.new_line_edit1.setText(file_path[0])
 
+
+# extra , image dock widget
 class Image_dockwidget(QDockWidget):
 
         # closeEvent
@@ -153,6 +157,18 @@ class Image_dockwidget(QDockWidget):
             self.new_the_old_id = game_id
             return
         
+        # 如果克隆版，无内容，使用原版的内容
+        if game_id in ui_models.clone_set:
+            parent_id = ui_models.clone_to_parent[game_id]
+
+            if self.new_func_get_image_from_file(parent_id):
+                self.new_the_old_id = game_id
+                return
+        
+            if self.new_func_get_image_from_zip(parent_id):
+                self.new_the_old_id = game_id
+                return
+
         # 没有内容，但记录 id
         self.new_the_old_id = game_id
 
@@ -184,63 +200,62 @@ class Image_dockwidget(QDockWidget):
 
     def new_func_get_image_from_zip(self,game_id=""):
         zip_file_path = the_variables.extra_image_zip_path["extra_image_zip_path/"+self.objectName()]
-        
-        #print(zip_file_path)
-        #print(self.new_zip_file_path)
-        #print(self.new_zip_opened_file)
 
         if not zip_file_path:
             if self.new_zip_opened_file is not None:
                 self.new_func_close_zip()
             return
         
-        if not os.path.isfile(zip_file_path):
-            if self.new_zip_opened_file is not None:
-                self.new_func_close_zip()
-            return
-        
-        # 文件变化，打开新文件
         if zip_file_path != self.new_zip_file_path:
+            if not os.path.isfile(zip_file_path):
+                if self.new_zip_opened_file is not None:
+                    self.new_func_close_zip()
+                return
+            
+            # 文件变化，打开新文件
+            if zip_file_path != self.new_zip_file_path:
+                if self.new_zip_opened_file is not None:
+                    self.new_func_close_zip()
+                self.new_func_open_zip(zip_file_path)
+
+        if zip_file_path == self.new_zip_file_path:
+            # 从 zip 文件中读取图片
             if self.new_zip_opened_file is not None:
-                self.new_func_close_zip()
-            self.new_func_open_zip(zip_file_path)
+                image_file_path = game_id+".png"
+                #print(image_file_path)
+                try:
+                    with self.new_zip_opened_file.open(image_file_path, mode='r', ) as image_data:
 
-        # 从 zip 文件中读取图片
-        if self.new_zip_opened_file is not None:
-            image_file_path = game_id+".png"
-            #print(image_file_path)
-            try:
-                with self.new_zip_opened_file.open(image_file_path, mode='r', ) as image_data:
-
-                    pixmap=QPixmap()
-                    pixmap.loadFromData(image_data.read()) 
-                    scaled_pixmap = pixmap.scaled(
-                        self.new_label_for_image.size(),                  # 目标大小
-                        Qt.KeepAspectRatio,            # 保持宽高比[reference:5]
-                        Qt.SmoothTransformation        # 平滑变换[reference:6]
-                        )      
-                    self.new_label_for_image.setPixmap(scaled_pixmap)
-                    self.new_pixmap_original = pixmap
-                    
-                    #print(zip_file_path)
-                    #print(image_file_path)
-                    return True
-
-            except:
-                pass
+                        pixmap=QPixmap()
+                        pixmap.loadFromData(image_data.read()) 
+                        scaled_pixmap = pixmap.scaled(
+                            self.new_label_for_image.size(),                  # 目标大小
+                            Qt.KeepAspectRatio,            # 保持宽高比
+                            Qt.SmoothTransformation        # 平滑变换
+                            )      
+                        self.new_label_for_image.setPixmap(scaled_pixmap)
+                        self.new_pixmap_original = pixmap
+                        
+                        #print(zip_file_path)
+                        #print(image_file_path)
+                        return True
+                except:
+                    pass
 
     def new_func_open_zip(self,zip_file_path):
         try:
             self.new_zip_opened_file = zipfile.ZipFile(zip_file_path, mode='r',  allowZip64=True,)
             self.new_zip_file_path = zip_file_path
+            print("open zip file :",self.new_zip_file_path)
         except:
             self.new_zip_file_path = ""
             self.new_zip_opened_file = None
     
     def new_func_close_zip(self):
-        if not self.new_zip_opened_file:
+        if self.new_zip_opened_file is not None:
             try:
                 self.new_zip_opened_file.close()
+                print("close zip file :",self.new_zip_file_path)
                 self.new_zip_opened_file = None
                 self.new_zip_file_path = ""
             except:
@@ -251,10 +266,12 @@ class Image_dockwidget(QDockWidget):
         self.new_pixmap_original= None
 
     def closeEvent(self, event):
+        
         self.new_func_close_zip()
+        self.new_func_clear_image()
+        self.new_the_old_id=None
 
         super().closeEvent(event)
-
 
     def resizeEvent(self, event):
         self.new_func_update_pixmap()
@@ -275,7 +292,128 @@ class Image_dockwidget(QDockWidget):
     @Slot(bool)
     def new_func_for_visibilityChanged(self,visible):
         self.new_visible = visible
+        
+        # 窗口显示，同步内容
+        if visible:
+            if self.new_the_old_id != the_variables.current_id:
+                self.new_slot_for_id_change(the_variables.current_id)
 
+
+
+# extra , text dock widget
+class Text_dockwidget_0(QDockWidget):
+
+        # closeEvent
+        # showEvent
+        # hideEvent    
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        self.new_textedit = QTextEdit(self)
+        
+        self.setWidget(self.new_textedit)
+
+        self.new_textedit.setReadOnly(True)
+        self.new_textedit.setUndoRedoEnabled(False)
+        self.new_textedit.setContextMenuPolicy(Qt.ActionsContextMenu)
+
+        self.new_the_old_id = None
+        self.new_cursor = None
+
+        self.new_visible = False
+        self.visibilityChanged.connect(self.new_func_for_visibilityChanged)
+
+        self.new_column_name= None
+        self.new_reuse_column_name = None
+
+    def closeEvent(self, event):
+        
+        self.new_textedit.clear()
+
+        self.new_the_old_id=None
+
+        if  self.new_cursor is not None:
+            try:
+                self.new_cursor.close()
+                self.new_cursor = None
+            except:
+                pass
+
+        super().closeEvent(event)
+
+    @Slot(str)
+    def new_slot_for_id_change(self,game_id=""):
+
+        #if not self.isVisible(): # 在签标页面 重叠时，不管用
+        #    return
+
+        if not self.new_visible:
+            return
+
+        #print()
+        #print("slot for image :",self.objectName())
+        if not game_id:
+            return
+
+        if game_id != the_variables.current_id:
+            return
+
+        # 清空文本
+        self.new_textedit.clear()
+
+        #
+        if self.new_cursor is None:
+            extra_database.connect_database()
+            self.new_cursor = extra_database.conn.cursor()
+
+        content = self.new_func_get_content(game_id)
+        if content:
+            self.new_textedit.insertPlainText(content)
+
+        # 记录 id
+        self.new_the_old_id = game_id
+
+    @Slot(bool)
+    def new_func_for_visibilityChanged(self,visible):
+        self.new_visible = visible
+        
+        # 窗口显示，同步内容
+        if visible:
+            if self.new_the_old_id != the_variables.current_id:
+                self.new_slot_for_id_change(the_variables.current_id)
+
+    # 子类 重写
+    def new_func_get_content(self,game_id):
+        return ""
+#
+# extra , history.xml
+class Text_dockwidget_for_history(Text_dockwidget_0):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.setObjectName("extra_history")
+    def new_func_get_content(self,game_id):
+        return extra_database.func_for_get_history(self.new_cursor,game_id)
+# extra , history.dat
+class Text_dockwidget_for_history_dat(Text_dockwidget_0):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.setObjectName("extra_history_dat")
+    def new_func_get_content(self,game_id):
+        return extra_database.func_for_get_history_dat(self.new_cursor,game_id)
+# extra , gameinit.dat
+class Text_dockwidget_for_gameinit(Text_dockwidget_0):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.setObjectName("extra_gameinit_dat")
+    def new_func_get_content(self,game_id):
+        return extra_database.func_for_get_gameinit(self.new_cursor,game_id)
+# extra , mameinfo.dat 这个有两部分 得重写
+class Text_dockwidget_for_mameinfo(Text_dockwidget_0):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.setObjectName("extra_mameinfo_dat")
+    def new_func_get_content(self,game_id):
+        return extra_database.func_for_get_mameinfo(self.new_cursor,game_id)    
 
 # toolbar ,search 
 class Dialog_for_search_options(QDialog):

@@ -153,7 +153,9 @@ def update_extra_path():
 
     print()
     for k,v in extra_image_folder_path.items():
-        print(k,v)
+        if v:
+            print(k,v)
     print()
     for k,v in extra_image_zip_path.items():
-        print(k,v)
+        if v:
+            print(k,v)
