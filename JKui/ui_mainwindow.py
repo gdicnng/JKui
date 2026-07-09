@@ -2,6 +2,7 @@ import sys,os,time,shutil,io
 import pickle
 import locale
 import re
+import sqlite3
 
 from qtpy.QtWidgets import *
 from qtpy.QtGui import *
@@ -72,6 +73,10 @@ class TheMainWindow(QMainWindow):
 
         
         self.new_dialog_for_choose_emulator_path_and_working_dir = None
+
+
+        self.new_shortcut = QShortcut(QKeySequence("Ctrl+P"), self)
+        self.new_shortcut.activated.connect(self.new_func_key_ctrl_p)
 
     ##################
     def new_func_creatCentralWidget(self):
@@ -211,9 +216,10 @@ class TheMainWindow(QMainWindow):
 
         ##### 周边
         self.new_menu_extra = self.menuBar().addMenu("周边")
+        #
         self.new_menu_for_show_dock_windows = self.new_menu_extra.addMenu("显示/隐藏 周边窗口")
-        #self.new_menu_for_load_extra_text = self.new_menu_extra.addMenu("重新加载周边文本")
-
+        self.new_menu_extra.addSeparator()
+        #
         action_for_load_extra_text = QAction("重新加载周边文本",self,)
         action_for_load_extra_text.triggered.connect(self.new_func_load_extra_text_to_database)
         self.new_menu_extra.addAction(action_for_load_extra_text)
@@ -251,7 +257,8 @@ class TheMainWindow(QMainWindow):
         self.new_progressbar_on_statusbar = QProgressBar(statusbar)
         self.new_progressbar_on_statusbar.setMinimum(0)
         self.new_progressbar_on_statusbar.setMaximum(0)
-        # If minimum and maximum both are set to 0, the bar shows a busy indicator instead of a percentage of steps
+        # If minimum and maximum both are set to 0, the bar shows a busy indicator instead of a percentage of steps        
+
         statusbar.addWidget( self.new_progressbar_on_statusbar , 1 )
         self.new_progressbar_on_statusbar.setVisible(False)
 
@@ -285,17 +292,24 @@ class TheMainWindow(QMainWindow):
         # extras text
         #
         # history.xml
+        self.new_list_for_dock_window_use_database = []
         dock_window_for_history_xml = ui_small_windows.Text_dockwidget_for_history("history.xml",self)
         dock_window_for_history_dat = ui_small_windows.Text_dockwidget_for_history_dat("history.dat",self)
         dock_window_for_gameinit_dat = ui_small_windows.Text_dockwidget_for_gameinit("gameinit.dat",self)
-        #dock_window_for_mameinfo_dat = ui_small_windows.Text_dockwidget_for_mameinfo("mameinfo.dat",self)
+        dock_window_for_mameinfo_dat = ui_small_windows.Text_dockwidget_for_mameinfo("mameinfo.dat",self)
+        dock_window_for_messinfo_dat = ui_small_windows.Text_dockwidget_for_messinfo("messinfo.dat",self)
+        dock_window_for_command_dat = ui_small_windows.Text_dockwidget_for_command("command.dat",self)
+        dock_window_for_command_english = ui_small_windows.Text_dockwidget_for_command_english("(English)command.dat",self)
 
-        for text_dock_window in [
-                    dock_window_for_history_xml,
-                    dock_window_for_history_dat,
-                    dock_window_for_gameinit_dat,
-                    #dock_window_for_mameinfo_dat,
-                    ]:
+        self.new_list_for_dock_window_use_database.append(dock_window_for_history_xml)
+        self.new_list_for_dock_window_use_database.append(dock_window_for_history_dat)
+        self.new_list_for_dock_window_use_database.append(dock_window_for_gameinit_dat)
+        self.new_list_for_dock_window_use_database.append(dock_window_for_mameinfo_dat)
+        self.new_list_for_dock_window_use_database.append(dock_window_for_messinfo_dat)
+        self.new_list_for_dock_window_use_database.append(dock_window_for_command_dat)
+        self.new_list_for_dock_window_use_database.append(dock_window_for_command_english)
+
+        for text_dock_window in self.new_list_for_dock_window_use_database:
             extra_dock_window_list.append(text_dock_window)
             text_dock_window.setAllowedAreas(Qt.AllDockWidgetAreas )
             self.addDockWidget(Qt.RightDockWidgetArea, text_dock_window)
@@ -882,9 +896,9 @@ class TheMainWindow(QMainWindow):
     def new_func_show_progress_bar(self):
         print("show progress bar on statusbar")
 
-        self.setEnabled(False)
-        
         self.new_progressbar_on_statusbar.setVisible(True)
+
+        self.setEnabled(False)
 
     @Slot()
     def new_func_progressbar_hide(self):
@@ -962,54 +976,64 @@ class TheMainWindow(QMainWindow):
         self.new_ui_statusbar_for_current_number.setText( str(number)+"/" )
 
     def new_func_load_extra_text_to_database(self,):
-        #self.new_func_show_progress_bar()
-        settings = self.new_settings
-        #ui_models.parent_set
+        self.new_func_show_progress_bar()
 
-        if extra_database.conn is None:
-            extra_database.connect_database()
-        
         extra_database.delete_table()
 
-        history_xml_path = settings.value("extra/history")
-        if os.path.isfile(history_xml_path):
-            print(history_xml_path)
-            extra_database.update_history(extra_database.conn,history_xml_path)
+        # 多线程时候
+        # 数据库 需要先关闭吗 ？
+        #
+        for dock_window in self.new_list_for_dock_window_use_database:
+            try:
+                dock_window.new_cursor.close()
+                dock_window.new_cursor = None
+            except:
+                dock_window.new_cursor = None
+        #
+        if extra_database.conn is not None:
+            try:
+                extra_database.conn.close()
+                extra_database.conn = None
+            except:
+                pass
+        #
+        if os.path.isfile(the_files.extra_database_file):
+            try:
+                os.remove(the_files.extra_database_file)
+            except:
+                pass
+        
+        # QThread
+        self.new_thread_for_load_data_to_database = QThread(self)
+        self.new_worker_for_load_data_to_database = Worker_load_extra_text_to_database(self.new_settings)
+        self.new_worker_for_load_data_to_database.moveToThread(self.new_thread_for_load_data_to_database)
 
-        history_dat_path = settings.value("extra/history_dat")
-        if os.path.isfile(history_dat_path):
-            print(history_dat_path)
-            extra_database.update_history_2(extra_database.conn,history_dat_path)
+        self.new_thread_for_load_data_to_database.started.connect(self.new_worker_for_load_data_to_database.new_func_do_work)
 
-        gameinit_path = settings.value("extra/gameinit")
-        if os.path.isfile(gameinit_path):
-            print(gameinit_path)
-            extra_database.update_gameinit(extra_database.conn,gameinit_path)
-
-        mameinfo_path = settings.value("extra/mameinfo")
-        if os.path.isfile(mameinfo_path):
-            print(mameinfo_path)
-            extra_database.update_mameinfo(extra_database.conn,mameinfo_path)
-
-        messinfo_path = settings.value("extra/messinfo")
-        if os.path.isfile(messinfo_path):
-            print(messinfo_path)
-            extra_database.update_messinfo(extra_database.conn,messinfo_path)
-
-        command_path = settings.value("extra/command")
-        if os.path.isfile(command_path):
-            print(command_path)
-            extra_database.update_command(extra_database.conn,command_path)
-
-        command_english_path = settings.value("extra/command_english")
-        if os.path.isfile(command_english_path):
-            print(command_english_path)
-            extra_database.update_command_english(extra_database.conn,command_english_path)
-
-        print("load extra text to database done")
-        #self.new_func_progressbar_hide()
+        self.new_worker_for_load_data_to_database.new_signal_for_finished.connect(self.new_func_progressbar_hide)
+        self.new_worker_for_load_data_to_database.new_signal_for_finished.connect(self.new_thread_for_load_data_to_database.quit)
+        self.new_worker_for_load_data_to_database.new_signal_for_finished.connect(self.new_worker_for_load_data_to_database.deleteLater)        
+        self.new_worker_for_load_data_to_database.new_signal_for_finished.connect(self.new_thread_for_load_data_to_database.deleteLater)        
+        
+        self.new_thread_for_load_data_to_database.start()
 
 
+    def new_func_key_ctrl_p(self):
+        """按下 Ctrl+P 时触发的槽函数"""
+        focused = QApplication.focusWidget()
+        if focused:
+            print(focused)
+            # 获取部件的类名和显示的文本（如果有）
+            text = ""
+            if hasattr(focused, "text"):
+                text = focused.text()
+            elif hasattr(focused, "placeholderText"):
+                text = focused.placeholderText()
+            elif hasattr(focused, "title"):
+                text = focused.title()
+            print(f"当前焦点部件：{focused.metaObject().className()}，内容：{text}")
+        else:
+            print("当前没有部件获得焦点（焦点可能在窗口外或非 QWidget 上）")
 
 #####
 class WorkerSignals(QObject):
@@ -1033,6 +1057,7 @@ class Worker_Test(QRunnable):
         self.new_signals.new_finished.emit()
 class Thread_for_parse_xml(QObject):
     pass
+
 class Worker_parse_xml(QObject):
     
     new_finished = Signal(dict)
@@ -1045,6 +1070,65 @@ class Worker_parse_xml(QObject):
             
             result = xml_parse_mame.main(self.new_xml_file)
             self.new_finished.emit(result)
+
+class Worker_load_extra_text_to_database(QObject):
+    new_signal_for_finished = Signal()
+
+    def __init__(self, settings,*args,**kwargs):
+        super().__init__()
+        self.new_settings = settings
+    
+    def new_func_do_work(self):
+        print("--------------------------------------")
+        print("load extra text to database")
+
+
+        settings = self.new_settings
+ 
+        
+
+        conn = sqlite3.connect(the_files.extra_database_file)
+        
+        history_xml_path = settings.value("extra/history")
+        if os.path.isfile(history_xml_path):
+            print(history_xml_path)
+            extra_database.update_history(conn,history_xml_path,ui_models.parent_set)
+
+        history_dat_path = settings.value("extra/history_dat")
+        if os.path.isfile(history_dat_path):
+            print(history_dat_path)
+            extra_database.update_history_2(conn,history_dat_path,ui_models.parent_set)
+
+        gameinit_path = settings.value("extra/gameinit")
+        if os.path.isfile(gameinit_path):
+            print(gameinit_path)
+            extra_database.update_gameinit(conn,gameinit_path,ui_models.parent_set)
+
+        mameinfo_path = settings.value("extra/mameinfo")
+        if os.path.isfile(mameinfo_path):
+            print(mameinfo_path)
+            extra_database.update_mameinfo(conn,mameinfo_path,ui_models.parent_set)
+
+        messinfo_path = settings.value("extra/messinfo")
+        if os.path.isfile(messinfo_path):
+            print(messinfo_path)
+            extra_database.update_messinfo(conn,messinfo_path,ui_models.parent_set)
+
+        command_path = settings.value("extra/command")
+        if os.path.isfile(command_path):
+            print(command_path)
+            extra_database.update_command(conn,command_path,ui_models.parent_set)
+
+        command_english_path = settings.value("extra/command_english")
+        if os.path.isfile(command_english_path):
+            print(command_english_path)
+            extra_database.update_command_english(conn,command_english_path,ui_models.parent_set)
+
+        conn.close()
+        print("load extra text to database done")
+
+        self.new_signal_for_finished.emit()
+
 
 class Controller(QObject):
     new_thread_for_parse_xml = QThread()

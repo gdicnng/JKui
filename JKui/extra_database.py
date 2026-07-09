@@ -67,6 +67,13 @@ def connect_database():
     except:
         conn = None
 
+    if conn is not None:
+        if not table_exists(conn, table_name):
+            try:
+                create_table(conn)
+            except:
+                pass
+
 def table_exists(conn, table_name):
     cursor = conn.cursor()
     cursor.execute(
@@ -332,8 +339,8 @@ func_for_get_history_dat =make_func_for_get_content("history_dat","history_dat_r
 func_for_get_mameinfo    =make_func_for_get_content("mameinfo","mameinfo_reuse")
 func_for_get_messinfo    =make_func_for_get_content("messinfo","messinfo_reuse")
 func_for_get_gameinit    =make_func_for_get_content("gameinit","gameinit_reuse")
-#func_for_get_command             =make_func_for_get_content("command","command_reuse")  
-#func_for_get_command_english     =make_func_for_get_content("command_english","command_english_reuse")
+func_for_get_command             =make_func_for_get_content("command","command_reuse")  
+func_for_get_command_english     =make_func_for_get_content("command_english","command_english_reuse")
 # 参数 (cursor,game_id)
 
 

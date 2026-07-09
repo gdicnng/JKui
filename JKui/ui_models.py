@@ -65,6 +65,7 @@ cloneof_column_index = -1 # 状态栏信息用
 romof_column_index = -1 # 状态栏信息用
 status_column_index = -1 # 状态栏信息用
 savestate_column_index = -1 # 状态栏信息用
+sourcefile_column_index = -1 # 周边，mameinfo.dat 、messinfo.dat 用
 parent_have_more_than_1_clone_set = set() # parent_id set
 #parent_to_clone__keys_set = set() 
 
@@ -202,6 +203,7 @@ def update_some_value():
     global romof_column_index
     global status_column_index
     global savestate_column_index
+    global sourcefile_column_index
 
     global parent_have_more_than_1_clone_set
     #global parent_to_clone__keys_set
@@ -235,6 +237,11 @@ def update_some_value():
         savestate_column_index = columns.index("savestate")
     except:
         pass
+    
+    try:
+        sourcefile_column_index = columns.index("sourcefile")
+    except:
+        pass    
 
     try:
         translation_column_index = columns.index("translation")
@@ -427,6 +434,15 @@ def get_string_for_statusbar(game_id):
 
         return " | ".join(temp_list)
 
+def get_sourcefile(game_id):
+    sourcefile = ""
+
+    if game_id in machine_dict:
+        sourcefile = machine_dict[game_id][sourcefile_column_index]
+        if sourcefile:
+            sourcefile = os.path.basename(sourcefile)
+
+    return sourcefile
 
 ###############
 @the_timer

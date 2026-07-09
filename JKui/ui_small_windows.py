@@ -1,6 +1,7 @@
 import os
 import sys
 import zipfile
+import pickle
 
 from qtpy.QtWidgets import *
 from qtpy.QtGui import *
@@ -118,6 +119,7 @@ class Image_dockwidget(QDockWidget):
         # 居中
         self.new_label_for_image.setAlignment(Qt.AlignCenter )
         #self.new_label_for_image.setScaledContents(True) 这个缩放不保持比例的
+        self.new_label_for_image.setFocusPolicy(Qt.ClickFocus)
         
         # 窗口大小变化 ？？？
         self.new_label_for_image.setSizePolicy(QSizePolicy.Ignored, QSizePolicy.Ignored)        
@@ -298,24 +300,44 @@ class Image_dockwidget(QDockWidget):
             if self.new_the_old_id != the_variables.current_id:
                 self.new_slot_for_id_change(the_variables.current_id)
 
+#
+class Text_edit_0(QTextEdit):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.setContextMenuPolicy(Qt.ActionsContextMenu)
 
+        action_no_line_wrap = QAction("不换行", self)
+        action_no_line_wrap.triggered.connect(self.new_slot_for_set_no_line_wrap)
+        
+        action_line_wrap = QAction("自动换行", self)
+        action_line_wrap.triggered.connect(self.new_slot_for_set_line_wrap)
 
-# extra , text dock widget
-class Text_dockwidget_0(QDockWidget):
+        self.addAction(action_no_line_wrap)
+        self.addAction(action_line_wrap)
+        
 
-        # closeEvent
-        # showEvent
-        # hideEvent    
+    @Slot()
+    def new_slot_for_set_no_line_wrap(self):
+        self.setLineWrapMode(QTextEdit.NoWrap)
+
+    @Slot()
+    def new_slot_for_set_line_wrap(self):
+        self.setLineWrapMode(QTextEdit.WidgetWidth)
+#
+# extra , history.xml 、history.dat 、gameinit.dat
+class Text_dockwidget_0(QDockWidget): 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        self.new_textedit = QTextEdit(self)
+        self.new_textedit = Text_edit_0(self)
         
         self.setWidget(self.new_textedit)
 
         self.new_textedit.setReadOnly(True)
         self.new_textedit.setUndoRedoEnabled(False)
         self.new_textedit.setContextMenuPolicy(Qt.ActionsContextMenu)
+        self.new_textedit.setTabChangesFocus(False)
+        self.new_textedit.setFocusPolicy(Qt.ClickFocus)
 
         self.new_the_old_id = None
         self.new_cursor = None
@@ -385,7 +407,6 @@ class Text_dockwidget_0(QDockWidget):
     # 子类 重写
     def new_func_get_content(self,game_id):
         return ""
-#
 # extra , history.xml
 class Text_dockwidget_for_history(Text_dockwidget_0):
     def __init__(self, *args, **kwargs):
@@ -407,13 +428,283 @@ class Text_dockwidget_for_gameinit(Text_dockwidget_0):
         self.setObjectName("extra_gameinit_dat")
     def new_func_get_content(self,game_id):
         return extra_database.func_for_get_gameinit(self.new_cursor,game_id)
-# extra , mameinfo.dat 这个有两部分 得重写
-class Text_dockwidget_for_mameinfo(Text_dockwidget_0):
+###
+# extra , mameinfo.dat 、 messinfo.dat
+class Text_dockwidget_1(QDockWidget):
+  
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        a_widget=QWidget(self)
+        layout = QVBoxLayout(a_widget)
+
+        self.new_textedit = Text_edit_0(self)
+        #
+        self.new_textedit.setReadOnly(True)
+        self.new_textedit.setUndoRedoEnabled(False)
+        #self.new_textedit.setContextMenuPolicy(Qt.ActionsContextMenu)
+        self.new_textedit.setTabChangesFocus(False)
+        self.new_textedit.setFocusPolicy(Qt.ClickFocus)
+
+        self.new_button = QPushButton("sourcefile",self)
+        self.new_button.clicked.connect(self.new_func_show_sourcefile)
+
+        layout.addWidget(self.new_button)
+        layout.addWidget(self.new_textedit)
+        self.setWidget(a_widget)
+
+
+        self.new_the_old_id = None
+        self.new_cursor = None
+
+        self.new_visible = False
+        self.visibilityChanged.connect(self.new_func_for_visibilityChanged)
+
+        self.new_column_name= None
+        self.new_reuse_column_name = None
+
+        self.new_content_for_sourcefile = ""
+
+    def closeEvent(self, event):
+        
+        self.new_textedit.clear()
+
+        self.new_the_old_id=None
+
+        if  self.new_cursor is not None:
+            try:
+                self.new_cursor.close()
+                self.new_cursor = None
+            except:
+                pass
+
+        super().closeEvent(event)
+    
+    @Slot(str)
+    def new_slot_for_id_change(self,game_id=""):
+
+        #if not self.isVisible(): # 在签标页面 重叠时，不管用
+        #    return
+
+        if not self.new_visible:
+            return
+
+        #print()
+        #print("slot for image :",self.objectName())
+        if not game_id:
+            return
+
+        if game_id != the_variables.current_id:
+            return
+
+        # 清空文本
+        self.new_textedit.clear()
+
+        #
+        if self.new_cursor is None:
+            extra_database.connect_database()
+            self.new_cursor = extra_database.conn.cursor()        
+
+        content = self.new_func_get_content(game_id)
+        source_id = ui_models.get_sourcefile(game_id)
+        source_content = self.new_func_get_content(source_id)
+
+        if source_content:
+            self.new_content_for_sourcefile = source_content
+            self.new_button.setText(source_id)
+            self.new_button.setVisible(True)
+        else:
+            self.new_content_for_sourcefile = ""
+            self.new_button.setVisible(False)
+            self.new_button.setText("")
+
+        if content :
+            self.new_textedit.insertPlainText(content)
+
+
+
+        # 记录 id
+        self.new_the_old_id = game_id
+    
+    @Slot(bool)
+    def new_func_for_visibilityChanged(self,visible):
+        self.new_visible = visible
+        
+        # 窗口显示，同步内容
+        if visible:
+            if self.new_the_old_id != the_variables.current_id:
+                self.new_slot_for_id_change(the_variables.current_id)
+
+    def new_func_show_sourcefile(self):
+        self.new_button.setVisible(False)
+        self.new_textedit.clear()
+        self.new_textedit.insertPlainText(self.new_content_for_sourcefile)
+
+    # 子类 重写
+    def new_func_get_content(self,game_id):
+        return ""
+# extra , mameinfo.dat
+class Text_dockwidget_for_mameinfo(Text_dockwidget_1):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.setObjectName("extra_mameinfo_dat")
+
     def new_func_get_content(self,game_id):
         return extra_database.func_for_get_mameinfo(self.new_cursor,game_id)    
+# extra , messinfo.dat
+class Text_dockwidget_for_messinfo(Text_dockwidget_1):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.setObjectName("extra_messinfo_dat")
+
+    def new_func_get_content(self,game_id):
+        return extra_database.func_for_get_messinfo(self.new_cursor,game_id)    
+###
+# extra , command.dat 、 command_english.dat
+class Text_dockwidget_2(QDockWidget):
+  
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        a_widget=QWidget(self)
+        layout = QVBoxLayout(a_widget)
+
+        self.new_textedit = Text_edit_0(self)
+        #
+        self.new_textedit.setReadOnly(True)
+        self.new_textedit.setUndoRedoEnabled(False)
+        self.new_textedit.setContextMenuPolicy(Qt.ActionsContextMenu)
+        self.new_textedit.setTabChangesFocus(False)
+        self.new_textedit.setFocusPolicy(Qt.ClickFocus)
+
+        self.new_combo_box = QComboBox(self)
+        #self.new_combo_box.clicked.connect(self.new_func_show_sourcefile)
+
+        layout.addWidget(self.new_combo_box)
+        layout.addWidget(self.new_textedit)
+        self.setWidget(a_widget)
+
+        self.new_combo_box.currentIndexChanged.connect(self.new_func_for_combo_box_change)
+        self.new_the_old_id = None
+        self.new_cursor = None
+
+        self.new_visible = False
+        self.visibilityChanged.connect(self.new_func_for_visibilityChanged)
+
+        self.new_content_remember = dict()
+
+    def closeEvent(self, event):
+        
+        self.new_textedit.clear()
+
+        self.new_the_old_id=None
+
+        if  self.new_cursor is not None:
+            try:
+                self.new_cursor.close()
+                self.new_cursor = None
+            except:
+                pass
+
+        super().closeEvent(event)
+    
+    def new_func_for_combo_box_change(self,index):
+        print("combo box change:",index)
+        if index == 0:
+            self.new_textedit.clear()
+            for keys in sorted(self.new_content_remember):
+                self.new_textedit.insertPlainText("".join(self.new_content_remember[keys]))
+        elif index > 0:
+            self.new_textedit.clear()
+            self.new_textedit.insertPlainText("".join(self.new_content_remember[index]))
+
+    @Slot(str)
+    def new_slot_for_id_change(self,game_id=""):
+
+        #if not self.isVisible(): # 在签标页面 重叠时，不管用
+        #    return
+
+        if not self.new_visible:
+            return
+
+        #print()
+        #print("slot for image :",self.objectName())
+        if not game_id:
+            return
+
+        if game_id != the_variables.current_id:
+            return
+
+        # 清空文本
+        self.new_textedit.clear()
+
+        #
+        if self.new_cursor is None:
+            extra_database.connect_database()
+            self.new_cursor = extra_database.conn.cursor()
+
+        dict_content = self.new_func_get_content(game_id)
+        if dict_content:
+            self.new_content_remember = dict_content
+            max_number = max(dict_content.keys())
+
+            if max_number <= 1:
+                self.new_combo_box.setVisible(False)
+            else:
+                self.new_combo_box.clear()
+                self.new_combo_box.setVisible(True)
+                self.new_combo_box.addItem("全部")
+                for key in sorted(dict_content.keys()):
+                    if key > 0:
+                        title = dict_content[key][0].strip()
+                        self.new_combo_box.addItem(title)
+
+            
+            for keys in sorted(dict_content):
+                self.new_textedit.insertPlainText("".join(dict_content[keys]))
+        else:
+            self.new_combo_box.setVisible(False)
+            self.new_content_remember = dict()
+
+        # 记录 id
+        self.new_the_old_id = game_id
+    
+    @Slot(bool)
+    def new_func_for_visibilityChanged(self,visible):
+        self.new_visible = visible
+        
+        # 窗口显示，同步内容
+        if visible:
+            if self.new_the_old_id != the_variables.current_id:
+                self.new_slot_for_id_change(the_variables.current_id)
+
+    # 子类 重写
+    def new_func_get_content(self,game_id):
+        return ""
+# extra , command.dat
+class Text_dockwidget_for_command(Text_dockwidget_2):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.setObjectName("extra_command_dat")
+
+    def new_func_get_content(self,game_id):
+        pickle_content = extra_database.func_for_get_command(self.new_cursor,game_id)
+        if pickle_content:
+            content = pickle.loads(pickle_content)
+            return content
+# extra , command.dat , english version
+class Text_dockwidget_for_command_english(Text_dockwidget_2):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.setObjectName("extra_command_dat_english")
+
+    def new_func_get_content(self,game_id):
+        pickle_content = extra_database.func_for_get_command_english(self.new_cursor,game_id)
+        if pickle_content:
+            content = pickle.loads(pickle_content)
+            return content
+
+
 
 # toolbar ,search 
 class Dialog_for_search_options(QDialog):
@@ -604,7 +895,7 @@ class Toolbars_for_search(QToolBar):
     def new_func_get_search_settings(self):
         # 暂时先不设置了
 
-        return self.new_signal_for_clear_search, self.new_search_columns
+        return self.new_ignore_case, self.new_search_columns
     
     def new_func_for_search(self):
         print("test search")
