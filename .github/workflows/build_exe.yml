@@ -10,6 +10,9 @@ on:
       - main
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   jobs_1: # build exe 
     
@@ -54,8 +57,6 @@ jobs:
         dir
 
     - name: Create or update prerelease 'latest' and upload file
-      permissions:
-        contents: write
       env:
         GH_TOKEN: ${{ github.token }}   # 使用内置 token
       run: |
