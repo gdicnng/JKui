@@ -1,0 +1,62 @@
+name: Update exe file for Latest Prerelease
+
+#on:
+#  push:
+#    branches: [ main ]          # 触发条件可按需调整
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  jobs_1: # build exe 
+    
+    env:
+      file_name_start: exe_by_pyinstaller_
+    
+    strategy:
+      matrix:
+        architecture: [ x64 , ] # python x86 ,x64
+        python_version: [ "3.13" ,] # python version
+        os: [ windows-2022,  ]
+    
+    runs-on: ${{ matrix.os }} 
+    
+    defaults:
+      run:
+        shell: cmd
+    
+    steps:
+    - name: checkout
+      uses: actions/checkout@v6
+    
+    - name: Set up Python
+      uses: actions/setup-python@v6
+      with:
+        python-version: ${{ matrix.python_version }}
+        architecture: ${{ matrix.architecture }}
+        
+    - name: Install python package
+      run: |
+        python -m pip install --upgrade pip setuptools wheel
+        python -m pip install --only-binary :all: --upgrade pillow
+        python -m pip install --upgrade pyinstaller
+        python -m pip install pyside6==6.8.3
+    
+    - name: pyinstaller to exe
+      run: |
+        .windows_build_exe_use_pyinstaller.bat
+    - name: 7z
+      run: |
+        7z a -t7z -mx=9 "${{ env.file_name_start }}_${{ matrix.os }}_python_${{ matrix.python_version }}_${{ matrix.architecture }}.7z" .\dist\*
+        dir
+
+    - name: Create or update prerelease 'latest' and upload file
+      env:
+        GH_TOKEN: ${{ github.token }}   # 使用内置 token
+      run: |
+        gh release create latest --prerelease --title "latest" --notes "" || true
+        gh release edit latest --notes "在新版本操作系统上生成的exe不能在老系统上运行。exe build on newer system cannot be run on old system ."
+        gh release upload latest "${{ env.file_name_start }}_${{ matrix.os }}_python_${{ matrix.python_version }}_${{ matrix.architecture }}.7z" --clobber

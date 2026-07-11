@@ -12,7 +12,7 @@ import the_variables
 import ui_models
 import extra_database
 
-
+# 初始化时，设置模拟器路径
 class Dialog_to_choose_emulator_path(QDialog):  
 
     # signal
@@ -104,8 +104,209 @@ class Dialog_to_choose_emulator_path(QDialog):
             print("file_path: ",file_path)
             self.new_line_edit1.setText(file_path[0])
 
+# 菜单中 , 设置周边路径
+class Dialog_to_set_extra_path(QDialog):
+    def __init__(self, settings,*args, **kwargs):
+        super().__init__(*args, **kwargs)
 
-# extra , image dock widget
+        self.new_settings = settings
+        
+        self.setWindowTitle("周边 路径 设置")
+        
+
+        # 创建垂直布局（对话框的主布局）
+        main_layout = QVBoxLayout(self)
+
+        # 1. 创建滚动区域
+        scroll_area = QScrollArea()
+        scroll_area.setWidgetResizable(True)  # 重要：让内容自适应大小
+        scroll_area.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOn) 
+
+        # 2. 创建容器部件
+        container = QWidget()
+
+        # 3. 为容器设置布局
+        layout = QGridLayout(container)
+
+        # 4. 添加大量小部件
+
+        self.new_line_edit_widgets_dict = dict()
+
+
+        row = 0
+        # extra/folders
+        col = 0
+        label_for_folders = QLabel("自定义目录位置")
+        layout.addWidget(label_for_folders,row,col)
+        col += 1
+        self.new_line_edit_widgets_dict["extra/folders"] = QLineEdit()
+        self.new_line_edit_widgets_dict["extra/folders"] .setPlaceholderText("设置文件夹路径，如有多个值，以英文分号(;)分隔")
+        layout.addWidget(self.new_line_edit_widgets_dict["extra/folders"],row,col)
+        col += 1
+        button_for_folders = QPushButton("...")
+        button_for_folders.clicked.connect(lambda: self.new_func_for_choose_dir(self.new_line_edit_widgets_dict["extra/folders"]))
+        layout.addWidget(button_for_folders,row,col)
+        col += 1
+
+        # extra/icons
+        row += 1
+        col = 0
+        label_for_icon = QLabel("图标")
+        layout.addWidget(label_for_icon,row,col)
+        col += 1
+        self.new_line_edit_widgets_dict["extra/icons"] = QLineEdit()
+        self.new_line_edit_widgets_dict["extra/icons"] .setPlaceholderText("zip 文件路径")
+        layout.addWidget(self.new_line_edit_widgets_dict["extra/icons"],row,col)
+        col += 1
+        button_for_icons = QPushButton("...")
+        button_for_icons.clicked.connect(lambda: self.new_func_for_choose_file(self.new_line_edit_widgets_dict["extra/icons"]))
+        layout.addWidget(button_for_icons,row,col)
+        col += 1
+
+        
+        def make_func(widget,filter_string):
+            return lambda: self.new_func_for_choose_file(widget,filter_string)
+        
+        # extra 文档
+        translation_dict = {
+                "extra/history":"history.xml",
+                "extra/history_dat":"history.dat",
+                "extra/gameinit":"gameinit.dat",
+                "extra/mameinfo":"mameinfo.dat",
+                "extra/messinfo":"messinfo.dat",
+                "extra/command":"command.dat(中文版)",
+                "extra/command_english":"command.dat(英文版)",
+        }
+        for key in [
+                "extra/history",
+                "extra/history_dat",
+                "extra/gameinit",
+                "extra/mameinfo",
+                "extra/messinfo",
+                "extra/command",
+                "extra/command_english",
+        ]:
+            filter_string = "dat (*.dat);;所有文件 (*.*)"
+            if key == "extra/history":
+                filter_string = "xml (*.xml);;所有文件 (*.*)"
+            row += 1
+            col = 0
+            label_for_file = QLabel(translation_dict.get(key,key))
+            layout.addWidget(label_for_file,row,col)
+            col += 1
+            self.new_line_edit_widgets_dict[key] = QLineEdit()
+            self.new_line_edit_widgets_dict[key] .setPlaceholderText("设置文件路径")
+            layout.addWidget(self.new_line_edit_widgets_dict[key],row,col)
+            col += 1
+            button_for_file = QPushButton("...")
+            button_for_file.clicked.connect(make_func(self.new_line_edit_widgets_dict[key],filter_string))
+            layout.addWidget(button_for_file,row,col)
+            col += 1
+        
+        # extra images zip
+        for n in range(1,the_variables.image_dockwidget_numbers+1):
+            filter_string="zip (*.zip);;所有文件 (*.*)"
+            key_for_image_zip = "extra_image_zip_path/image_"+str(n)
+            row += 1
+            col = 0
+            label_for_file = QLabel("图片_zip_路径_" + str(n))
+            #label_for_file = QLabel(key_for_image_zip)
+            layout.addWidget(label_for_file,row,col)
+            col += 1
+            self.new_line_edit_widgets_dict[key_for_image_zip] = QLineEdit()
+            self.new_line_edit_widgets_dict[key_for_image_zip] .setPlaceholderText("设置 zip文件 路径")
+            layout.addWidget(self.new_line_edit_widgets_dict[key_for_image_zip],row,col)
+            col += 1
+            button_for_file = QPushButton("...")
+            button_for_file.clicked.connect(make_func(self.new_line_edit_widgets_dict[key_for_image_zip],filter_string))
+            layout.addWidget(button_for_file,row,col)
+            col += 1
+
+        def make_func_for_folder(widget):
+            return lambda: self.new_func_for_choose_dir(widget)
+        # extra images folder
+        for n in range(1,the_variables.image_dockwidget_numbers+1):
+            key_for_image_folder = "extra_image_folder_path/image_"+str(n)
+            row += 1
+            col = 0
+            label_for_file = QLabel("图片文件夹路径_" + str(n))
+            layout.addWidget(label_for_file,row,col)
+            col += 1
+            self.new_line_edit_widgets_dict[key_for_image_folder] = QLineEdit()
+            self.new_line_edit_widgets_dict[key_for_image_folder] .setPlaceholderText("设置 文件夹 路径")
+            layout.addWidget(self.new_line_edit_widgets_dict[key_for_image_folder],row,col)
+            col += 1
+            button_for_dir = QPushButton("...")
+            button_for_dir.clicked.connect(make_func_for_folder(self.new_line_edit_widgets_dict[key_for_image_folder]))
+            layout.addWidget(button_for_dir,row,col)
+            col += 1
+
+        # 5. 将容器设为滚动区域的内容
+        scroll_area.setWidget(container)
+
+        # 6. 将滚动区域添加到对话框主布局中
+        main_layout.addWidget(scroll_area)
+
+        # 可选：添加一个普通按钮（如“关闭”），位于滚动区域下方
+        ok_btn = QPushButton("确认")
+        ok_btn.clicked.connect(self.new_func_for_ok) 
+        ok_btn.clicked.connect(self.accept)  # 点击关闭对话框
+
+        cancel_btn = QPushButton("取消")
+        cancel_btn.clicked.connect(self.reject)  # 点击关闭对话框
+        
+        main_layout.addWidget(cancel_btn)
+        main_layout.addWidget(ok_btn)
+
+        for key in self.new_line_edit_widgets_dict.keys():
+            self.new_line_edit_widgets_dict[key].setMinimumWidth(300)
+
+    def new_func_for_ok(self,):
+        print("func for ok")
+        settings = self.new_settings
+
+        for key in self.new_line_edit_widgets_dict.keys():
+            value = self.new_line_edit_widgets_dict[key].text()
+            if value:
+                settings.setValue(key,value)
+            else:
+                settings.setValue(key,"")
+
+        # 图片路径，更新到 the_variables ，需要频繁使用
+        the_variables.update_extra_path() 
+
+    def new_func_set_values(self,):
+        for key in self.new_line_edit_widgets_dict.keys():
+            value = self.new_settings.value(key)
+            if value:
+                self.new_line_edit_widgets_dict[key].setText(value)
+            else:# 空值，或无值
+                self.new_line_edit_widgets_dict[key].clear()
+
+    def new_func_for_choose_dir(self,line_edit):
+        dir_path = QFileDialog.getExistingDirectory(
+            self,
+            "选择文件夹",
+            "",  # 默认起始目录，空表示当前目录或上次使用的目录
+            )
+        if dir_path:
+            print("dir_path: ",dir_path)
+            line_edit.setText(dir_path)
+    
+    def new_func_for_choose_file(self,line_edit,filter_string="zip (*.zip);;所有文件 (*.*)"):
+        file_path = QFileDialog.getOpenFileName(
+            self,
+            "选择文件",
+            "",  # 默认起始目录，空表示当前目录或上次使用的目录
+            filter_string
+            )
+        if file_path:
+            print("file_path: ",file_path)
+            if file_path[0]:
+                line_edit.setText(file_path[0])
+
+
+# extra , image， dock widget
 class Image_dockwidget(QDockWidget):
 
         # closeEvent
@@ -299,7 +500,7 @@ class Image_dockwidget(QDockWidget):
         if visible:
             if self.new_the_old_id != the_variables.current_id:
                 self.new_slot_for_id_change(the_variables.current_id)
-
+# extra ，文档，dock widget
 #
 class Text_edit_0(QTextEdit):
     def __init__(self, *args, **kwargs):
@@ -705,7 +906,6 @@ class Text_dockwidget_for_command_english(Text_dockwidget_2):
             return content
 
 
-
 # toolbar ,search 
 class Dialog_for_search_options(QDialog):
     def __init__(self, *args, **kwargs):
@@ -943,4 +1143,4 @@ class Toolbars_for_search(QToolBar):
         if self.new_dialog_for_search_options.exec_():
             self.new_ignore_case,self.new_search_columns = self.new_dialog_for_search_options.new_func_get_value()
             print("after:",self.new_ignore_case,self.new_search_columns)
-            
+

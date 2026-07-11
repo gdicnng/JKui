@@ -41,7 +41,7 @@ default_value = {
     "ui/icon_size_for_icon_mode": 16,
 
 
-    "extra/icons": "icons",
+    "extra/icons": "icons.zip",
 
     "extra/folders": "folders",
 

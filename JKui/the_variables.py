@@ -151,6 +151,7 @@ def update_extra_path():
         except:
             pass
 
+    #  打印结果，查看一下
     print()
     for k,v in extra_image_folder_path.items():
         if v:

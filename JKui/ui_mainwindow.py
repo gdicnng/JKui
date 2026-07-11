@@ -172,9 +172,9 @@ class TheMainWindow(QMainWindow):
         ##### 设置
         self.new_menu_settings = self.menuBar().addMenu("设置")
         #
-        self.new_action_emulator_path = QAction("模拟器路径",self,)
-        #self.new_action_emulator_path.triggered.connect( h )
-        self.new_menu_settings.addAction(self.new_action_emulator_path)
+        self.new_action_delete_emulator = QAction("删除模拟器路径",self,)
+        self.new_action_delete_emulator.triggered.connect( self.new_func_delete_emulator )
+        self.new_menu_settings.addAction(self.new_action_delete_emulator)
         #
         self.new_action_emulator_settings = QAction("模拟器设置",self,)
         self.new_action_emulator_settings.triggered.connect( self.centralWidget().new_func_start_emulator )
@@ -182,6 +182,7 @@ class TheMainWindow(QMainWindow):
         #
         self.new_action_extra_path = QAction("周边路径",self,)
         self.new_menu_settings.addAction(self.new_action_extra_path)
+        self.new_action_extra_path.triggered.connect( self.new_func_set_extra_path )
 
         ##### 游戏列表
         self.new_menu_gamelist=self.menuBar().addMenu("游戏列表")
@@ -1017,6 +1018,77 @@ class TheMainWindow(QMainWindow):
         
         self.new_thread_for_load_data_to_database.start()
 
+
+    # menu 删除模拟器路径
+    @Slot()
+    def new_func_delete_emulator(self,):
+        print("delete emulator")
+
+        ask_string = "\n".join([
+                "1.删除模拟器路径设置",
+                "",
+                "2.删除游戏列表临时文件：",
+                f"{the_files.data_file} ",
+                "",
+                "删除后，程序将关闭。",
+                "删除后，下次打开程序，需要重新初始化。",
+                "",
+                "是否继续？",
+            ])
+
+        # 显示一个询问对话框，包含 "Yes" 和 "No" 两个按钮[reference:4][reference:5]
+        reply = QMessageBox.question(
+            self,                      # 父窗口
+            "删除模拟器路径",                # 对话框标题
+            ask_string,   # 显示的问题
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No  # 按钮组合
+        )
+
+        # 根据用户的选择执行相应操作[reference:6][reference:7]
+        if reply == QMessageBox.StandardButton.Yes:
+            print("用户点击了“是”")
+            # 在这里添加确认后的逻辑
+
+            def delete_file(file_path):
+                if os.path.isfile(file_path):
+                    try:
+                        os.remove(file_path)
+                        return True
+                    except:
+                        pass
+            # 删除文件
+            if os.path.isfile(the_files.data_file):
+                if not delete_file(the_files.data_file):
+                    time.sleep(1) # 如果失败，1秒后重试一次
+                    if not delete_file(the_files.data_file):
+                        QMessageBox.warning(self, "删除失败", f"文件删除文件失败 {the_files.data_file} ，或可手动删除")
+                        return
+
+            self.new_settings.setValue("mame/path","")
+            self.new_settings.setValue("mame/working_directory","")
+            
+            self.close()
+
+        else:
+            print("用户点击了“否”或关闭了对话框")
+            # 在这里添加取消后的逻辑        
+
+    # menu 周边路径设置
+    @Slot()
+    def new_func_set_extra_path(self,):
+        print("set extra path")
+
+        try:
+            self.new_dialog_for_set_extra_path
+        except:
+            self.new_dialog_for_set_extra_path = ui_small_windows.Dialog_to_set_extra_path(self.new_settings , self)
+
+        self.new_dialog_for_set_extra_path.new_func_set_values()
+        
+        if self.new_dialog_for_set_extra_path.exec() :
+            print("用户点击了“确认”")
+        else:
+            print("用户点击了“取消”或关闭了对话框")
 
     def new_func_key_ctrl_p(self):
         """按下 Ctrl+P 时触发的槽函数"""
