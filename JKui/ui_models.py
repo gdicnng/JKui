@@ -109,17 +109,22 @@ def set_value(value_name,new_value):
     else:
         print("Error: value_name not found",value_name)
 
-def load_gamelist_translation_file(file_path):
-    index = -1
-    try:
-        index = columns.index("translation")
-    except:
+def load_gamelist_translation_file(file_path,clear_old_data=False):
+    index_translation = columns.index("translation")
+    index_description = columns.index("description")
+    
+    global machine_dict
+
+    if clear_old_data:
+        for game_id in machine_dict:
+            machine_dict[game_id][index_translation] = machine_dict[game_id][index_description]
+    
+    if not os.path.isfile(file_path):
         return
     
     match_str = r'([^\t]+)\t([^\t]+)'
-    p = re.compile(match_str)    
+    p = re.compile(match_str)
 
-    global machine_dict
     with open(file_path, 'rt',encoding='utf-8_sig',errors="backslashreplace") as file:
         for line in file:
             
@@ -130,7 +135,7 @@ def load_gamelist_translation_file(file_path):
                 translation = result.group(2).strip()
                 if game_name and translation:
                     if game_name in machine_dict:
-                        machine_dict[ game_name ][index] = translation
+                        machine_dict[ game_name ][index_translation] = translation
 
 def load_icon():
     global icon_red_pixmap, icon_green_pixmap, icon_yellow_pixmap, icon_black_pixmap
@@ -574,7 +579,7 @@ class Model_for_table_view(QAbstractTableModel):
         if role == Qt.DisplayRole:
             if orientation == Qt.Horizontal:
                 if section < len(columns):
-                    return columns[section]
+                    return the_variables.columns_translation.get(columns[section],columns[section])
 
             if orientation == Qt.Vertical:
                 return str(section)
@@ -976,7 +981,7 @@ class Model_for_table_view_2_level(QAbstractTableModel):
         if role == Qt.DisplayRole:
             if orientation == Qt.Horizontal:
                 if section < len(columns):
-                    return columns[section]
+                    return the_variables.columns_translation.get(columns[section],columns[section])
 
             if orientation == Qt.Vertical:
                 return str(section)
@@ -1270,7 +1275,7 @@ class Model_for_tree_view(QAbstractItemModel):
         if role == Qt.DisplayRole:
             if orientation == Qt.Horizontal:
                 if section < len(columns):
-                    return columns[section]
+                    return the_variables.columns_translation.get(columns[section],columns[section])
 
             if orientation == Qt.Vertical:
                 return str(section)

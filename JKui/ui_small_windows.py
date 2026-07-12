@@ -3,6 +3,7 @@ import sys
 import zipfile
 import pickle
 
+import qtpy
 from qtpy.QtWidgets import *
 from qtpy.QtGui import *
 from qtpy.QtCore import *
@@ -304,6 +305,138 @@ class Dialog_to_set_extra_path(QDialog):
             print("file_path: ",file_path)
             if file_path[0]:
                 line_edit.setText(file_path[0])
+
+
+# 菜单中 , 设置 游戏列表翻译文件 路径
+class Dialog_for_translation_file_path(QDialog):  
+
+    def __init__(self, settings,*args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.new_settings = settings
+        
+        self.setWindowTitle("游戏列表翻译文件")
+
+        self.setSizeGripEnabled(True)
+        
+        self.setMinimumWidth(500)
+        #self.setMinimumHeight(300)
+
+        # 垂直布局管理器
+        layout = QVBoxLayout()
+
+        # 第一行布局
+        first_row_layout = QHBoxLayout()
+        label_1 = QLabel("翻译文件路径：")
+        self.new_line_edit1 = QLineEdit()
+        button1 = QPushButton("...")
+        button1.clicked.connect(lambda:self.new_func_for_choose_file(self.new_line_edit1))
+        first_row_layout.addWidget(label_1)
+        first_row_layout.addWidget(self.new_line_edit1)
+        first_row_layout.addWidget(button1)
+        layout.addLayout(first_row_layout)
+
+        layout.addWidget(QLabel("注：程序启动时，自动载入翻译文件"))
+        layout.addWidget(QLabel("注：翻译文件的字符编码为 utf-8，如果不是的话自行转换一下"))
+
+        ## 第二行布局
+        #second_row_layout = QHBoxLayout()
+        #label_2 = QLabel("翻译文件编辑后的保存路径：")
+        #self.new_line_edit2 = QLineEdit()
+        ##button2 = QPushButton("...")
+        ##button2.clicked.connect(lambda:self.new_func_for_choose_file(self.new_line_edit2))
+        #second_row_layout.addWidget(label_2)
+        #second_row_layout.addWidget(self.new_line_edit2)
+        ##second_row_layout.addWidget(button2)
+        #layout.addLayout(second_row_layout)
+
+        # 添加一个按钮以演示如何关闭对话框（可选）
+        button_ok = QPushButton("确认")
+        button_ok.clicked.connect(self.new_func_for_ok)
+        button_ok.clicked.connect(self.accept)
+        layout.addWidget(button_ok)
+
+        button_cancel = QPushButton("取消")
+        button_cancel.clicked.connect(self.reject)
+        layout.addWidget(button_cancel)
+
+        self.setLayout(layout)
+
+    def new_func_set_values(self,):
+        settings = self.new_settings
+
+        translation_file = settings.value("mame/translation_file",)
+        if translation_file:
+            self.new_line_edit1.setText(translation_file)
+        else:
+            self.new_line_edit1.clear()
+
+    def new_func_for_ok(self,checked):
+        settings = self.new_settings
+
+        translation_file = self.new_line_edit1.text()
+        if translation_file :
+            print("translation_file: ",translation_file)
+
+            # 保存 设置
+            settings.setValue("mame/translation_file",translation_file)
+
+            # 加载翻译数据
+            ui_models.load_gamelist_translation_file(translation_file,clear_old_data=True)
+
+            # 刷新列表
+            self.parent().centralWidget().new_func_refresh_use_layoutchange()
+
+    def new_func_for_choose_file(self,line_edit,filter_string="lst (*.lst);;所有文件 (*.*)"):
+        file_path = QFileDialog.getOpenFileName(
+            self,
+            "选择文件",
+            "",  # 默认起始目录，空表示当前目录或上次使用的目录
+            filter_string
+            )
+        if file_path:
+            print("file_path: ",file_path)
+            if file_path[0]:
+                line_edit.setText(file_path[0])
+
+# 菜单中，显示 python 版本
+class Dialog_for_show_python_version(QDialog):  
+
+    def __init__(self,*args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        self.setWindowTitle("python 版本")
+
+        self.setSizeGripEnabled(True)
+        
+        #self.setMinimumWidth(400)
+        #self.setMinimumHeight(400)
+
+        # 垂直布局管理器
+        layout = QVBoxLayout()
+
+        # python
+        python_version  = str(sys.version)
+        layout.addWidget(QLabel("" ))
+        layout.addWidget(QLabel("python : " + python_version))
+
+        # qtpy
+        try:
+            version_qtpy = qtpy.__version__
+            layout.addWidget(QLabel("" ))
+            layout.addWidget(QLabel("qtpy : "  + str(version_qtpy)))
+        except:
+            pass
+        
+        # pyside or pyqt
+        try:
+            version_qt = str(qtpy.API_NAME) + " : " + str(qtpy.QT_VERSION)
+            layout.addWidget(QLabel("" ))
+            layout.addWidget(QLabel(version_qt))
+        except:
+            pass
+
+
+        self.setLayout(layout)
 
 
 # extra , image， dock widget
@@ -887,6 +1020,7 @@ class Text_dockwidget_for_command(Text_dockwidget_2):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.setObjectName("extra_command_dat")
+        self.new_textedit.setObjectName("textedit_command")
 
     def new_func_get_content(self,game_id):
         pickle_content = extra_database.func_for_get_command(self.new_cursor,game_id)
@@ -898,6 +1032,7 @@ class Text_dockwidget_for_command_english(Text_dockwidget_2):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.setObjectName("extra_command_dat_english")
+        self.new_textedit.setObjectName("textedit_command_english")
 
     def new_func_get_content(self,game_id):
         pickle_content = extra_database.func_for_get_command_english(self.new_cursor,game_id)

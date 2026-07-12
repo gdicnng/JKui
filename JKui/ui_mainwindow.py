@@ -24,7 +24,7 @@ import extra_database
 
 
 class TheMainWindow(QMainWindow):
-    
+    new_signal_for_update_model_data_finished = Signal()
 
     def __init__(self):
         super().__init__()
@@ -168,6 +168,15 @@ class TheMainWindow(QMainWindow):
         
         ##### 语言
         self.new_menu_language = self.menuBar().addMenu("语言/language")
+        # 游戏列表翻译文件
+        self.new_action_for_gamelist_translation_file = QAction("游戏列表翻译文件(game list translation file)",self,)
+        self.new_action_for_gamelist_translation_file.triggered.connect( self.new_func_set_gamelist_translation_file )
+        self.new_menu_language.addAction(self.new_action_for_gamelist_translation_file)
+        # ui 翻译文件
+        # 未完等续
+        self.new_action_for_ui_translation_file = QAction("ui 翻译文件 ，未完成(ui translation file,not finished yet)",self,)
+        #self.new_action_for_ui_translation_file.triggered.connect( self.new_func_set_ui_translation_file )
+        self.new_menu_language.addAction(self.new_action_for_ui_translation_file)
 
         ##### 设置
         self.new_menu_settings = self.menuBar().addMenu("设置")
@@ -227,14 +236,12 @@ class TheMainWindow(QMainWindow):
         #self.new_menu_for_load_extra_text.addAction(self.new_func_load_extra_text_to_database)
 
         self.new_ui_menu_other = self.menuBar().addMenu("其它")
-        self.new_ui_menu_other.addAction(self.new_action_test)
-        self.new_ui_menu_other.addAction(self.new_action_test_progressbar)
-        
-        #self.new_ui_menu_view = self.menuBar().addMenu("view")
-        #self.new_ui_menu_view.addAction(self.new_action_b)
 
-    def new_func_test(self):
-        print("test")
+        action_show_python_version = QAction("显示 python 版本",self,)
+        action_show_python_version.triggered.connect(self.new_func_show_python_version)
+        self.new_ui_menu_other.addAction(action_show_python_version)
+
+        #self.new_ui_menu_other.addAction(self.new_action_test_progressbar)
 
     def new_func_createStatusBar(self):
         statusbar = self.statusBar()
@@ -504,6 +511,7 @@ class TheMainWindow(QMainWindow):
             except:
                 print( "read pickle failed")
                 print( filename )
+                QMessageBox.critical(self, "错误", "pickle文件读取失败。\n文件可能损坏;\n或者用户无权限读取该文件：\n" + filename)
                 sys.exit()
         
         self.new_func_update_model_data(data)
@@ -532,7 +540,18 @@ class TheMainWindow(QMainWindow):
     def new_func_update_model_data(self,data):
         print()
         print( "update model data" )
+        self.new_func_show_progress_bar()
 
+        self.new_thread_for_update_model_data = QThread(self)
+
+        self.new_thread_for_update_model_data.started.connect(lambda: self.new_func_update_model_data_work(data))
+        
+        self.new_signal_for_update_model_data_finished.connect(self.new_func_progressbar_hide)
+        self.new_signal_for_update_model_data_finished.connect(self.new_thread_for_update_model_data.quit)
+        self.new_signal_for_update_model_data_finished.connect(self.new_thread_for_update_model_data.deleteLater)
+        self.new_signal_for_update_model_data_finished.connect(self.new_func_update_model_data_after)
+        self.new_thread_for_update_model_data.start()
+    def new_func_update_model_data_work(self,data):
         # 原始图标
         ui_models.load_icon()
 
@@ -601,19 +620,13 @@ class TheMainWindow(QMainWindow):
             top_index_list = top_index_list_string.split(";")
         ui_models.rebuild_index(top_index_list)
         self.new_ui_index.model().endResetModel()
-        
-        
-        ######
-        ######
-        ######
-        ######
 
-        #ui_models.set_game_list_to_all()
-        #self.new_ui_central_widget.new_func_refresh()
-
+        self.new_signal_for_update_model_data_finished.emit()
+        
+    def new_func_update_model_data_after(self):
         # 更新标题
-        if data["mame_version"]:
-            temp = str( data["mame_version"] )
+        if ui_models.mame_version:
+            temp = str( ui_models.mame_version )
             temp = temp.strip()
             self.setWindowTitle(the_variables.software_name + "  -  " + temp)
         
@@ -1084,12 +1097,41 @@ class TheMainWindow(QMainWindow):
             self.new_dialog_for_set_extra_path = ui_small_windows.Dialog_to_set_extra_path(self.new_settings , self)
 
         self.new_dialog_for_set_extra_path.new_func_set_values()
-        
+
         if self.new_dialog_for_set_extra_path.exec() :
             print("用户点击了“确认”")
         else:
             print("用户点击了“取消”或关闭了对话框")
 
+    # menu 翻译文件设置
+    @Slot()
+    def new_func_set_gamelist_translation_file(self,):
+        print("set translation file")
+
+        try:
+            self.new_dialog_for_set_translation_file
+        except:
+            self.new_dialog_for_set_translation_file = ui_small_windows.Dialog_for_translation_file_path(self.new_settings , self)
+
+        self.new_dialog_for_set_translation_file.new_func_set_values()
+
+        if self.new_dialog_for_set_translation_file.exec() :
+            print("用户点击了“确认”")
+        else:
+            print("用户点击了“取消”或关闭了对话框")
+
+    # menu 显示 python 版本
+    @Slot()
+    def new_func_show_python_version(self,):
+        print("show python version")
+
+        try:
+            self.new_dialog_for_show_python_version
+        except:
+            self.new_dialog_for_show_python_version = ui_small_windows.Dialog_for_show_python_version( self)
+
+        self.new_dialog_for_show_python_version.exec()
+    
     def new_func_key_ctrl_p(self):
         """按下 Ctrl+P 时触发的槽函数"""
         focused = QApplication.focusWidget()

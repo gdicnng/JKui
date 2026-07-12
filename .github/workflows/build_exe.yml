@@ -46,7 +46,7 @@ jobs:
         python -m pip install --upgrade pip setuptools wheel
         python -m pip install --only-binary :all: --upgrade pillow
         python -m pip install --upgrade pyinstaller
-        python -m pip install --upgrade qtpy
+        python -m pip install "qtpy==2.4.3"
         python -m pip install "PySide6==6.8.3"
     
     - name: pyinstaller to exe
@@ -55,6 +55,7 @@ jobs:
     - name: 7z
       run: |
         7z a -t7z -mx=9 "${{ env.file_name_start }}_${{ matrix.os }}_python_${{ matrix.python_version }}_${{ matrix.architecture }}.7z" .\dist\*
+        7z a -t7z -mx=9 "JKui(source).7z" .\JKui\*
         dir
 
     - name: Create or update prerelease 'latest' and upload file
@@ -64,3 +65,4 @@ jobs:
         gh release create latest --prerelease --title "latest" --notes "" || true
         gh release edit latest --notes "在新版本操作系统上生成的exe不能在老系统上运行。exe build on newer system cannot be run on old system ."
         gh release upload latest "${{ env.file_name_start }}_${{ matrix.os }}_python_${{ matrix.python_version }}_${{ matrix.architecture }}.7z" --clobber
+        gh release upload latest "JKui(source).7z" --clobber

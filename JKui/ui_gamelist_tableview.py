@@ -54,6 +54,7 @@ class My_Table(QTableView):
         self.setTabKeyNavigation(False)
 
         self.setSortingEnabled(True)
+
     
     def new_func(self,):
         self.new_table_type = "table_view_1_level"

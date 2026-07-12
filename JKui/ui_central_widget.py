@@ -71,11 +71,12 @@ class TheCentralWidget(QStackedWidget):
     def new_func_show_treeview(self,):
         self.new_func_show_table(self.new_ui_gamelist_treeview)
 
-    def new_func_refresh(self,):
+    def new_func_refresh_use_layoutchange(self,):
         widget = self.currentWidget()
         if hasattr(widget,"model"):
-            #widget.model().layoutChanged.emit() # ? 数据整体结构发生重大变化（如重置所有数据）
-            widget.model().modelReset.emit() # ? 模型被完全重置
+            widget.model().layoutAboutToBeChanged.emit() # ? 数据整体结构发生重大变化（如重置所有数据）
+            widget.model().layoutChanged.emit() # ? 数据整体结构发生重大变化（如重置所有数据）
+            #widget.model().modelReset.emit() # ? 模型被完全重置
             print("refresh")
     
     def new_func_for_save_settings(self,):
