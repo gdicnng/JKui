@@ -12,4 +12,5 @@ python -m PyInstaller ^
   --icon JKui\my_resource\icon_for_mainwindow.png ^
   JKui\__main__.py
 
-
+rem copy qss 
+xcopy  qss    dist\JKui\qss    /E /I /H /Y
