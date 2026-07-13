@@ -1,0 +1,124 @@
+/* 注释符号 */
+
+/* 颜色 示例： */
+    
+    /* transparent */
+    /* 颜色・透明 */
+    
+    /* rgb(0,0,0) */
+    /* 颜色・黑色 */
+    /* rgb(255,255,255) */
+    /* 颜色・白色 */
+    /* 可以自己 根据 需要 改 各种 颜色 (0-255，0-255，0-255) */
+    
+    /* rgba(0,0,0,50); */
+    /* 半透明・颜色・黑    透明度的值 可以改，最后一位数字 范围 0-255 */
+
+/* 以上为注释内容 */
+/* 以上为注释内容 */
+/* 以上为注释内容 */
+
+/* 主窗口 */
+QMainWindow { 
+    border-image: url(qss/8926-background-1839358_1920.jpg) stretch;
+        /* 背景图片 */
+        /* 可以改成需要的图片 */
+        /* 拉伸 或 重复： stretch 或 repeat */
+    }
+
+/* 主窗口 分隔条 */
+QMainWindow::separator { 
+    background-color:rgba(0,0,0,30); /* 半透明 */
+    }
+
+
+/* 菜单栏 */
+QMenuBar { 
+    background-color:rgba(255,255,255,50); 
+    
+    /* spacing:3px; */
+        /* 间距 */
+    }
+/* 菜单栏 中的 项目 */
+QMenuBar::item{ 
+    background-color:transparent; /* 全透明 */
+    }
+
+
+/* 工具栏 */
+QToolBar{
+    border:0; /* 边框 宽度减为0 */
+    background-color:rgba(255,255,255,50);
+    /* spacing:3px;  */
+}
+/* 工具栏 按钮 */
+QToolButton {
+    /* background-color:rgba(255,255,255,100); */
+    background-color:transparent;/* 全透明 */
+}
+/*状态栏*/
+QStatusBar{background-color:rgba(255,255,255,50);}
+
+
+/* 表格 标题栏 */
+/* 标题栏整体透明 */
+QHeaderView {
+    background-color: transparent;
+}
+/* 标题栏单元格、角按钮、以及所有交互状态全透明 */
+QHeaderView::section,
+QTableCornerButton::section,
+QHeaderView::section:hover,
+QHeaderView::section:pressed {
+    background: transparent;
+    border: none;
+}
+QHeaderView::section { 
+    background-color:rgba(0,0,0,20); /* 半透明  */
+    }
+
+
+/* 滚动条 */
+QScrollBar{
+    background-color:rgba(255,255,255,40); /* 半透明  */
+    }
+
+
+/* 文本区 */
+QTextEdit{
+    background-color:rgba(255,255,255,50); /*  半透明 */
+    border:0;
+}
+/* 表格 QTreeView QTableView 文字区*/
+QTreeView ,QTableView {
+    background-color:rgba(255,255,255,50);/*   半透明 */
+    border: 0;
+}
+/*周边 图片区 与文本区保持一致*/
+QDockWidget QLabel{
+	background-color:rgba(255,255,255,50);/*   半透明 */
+}
+/* 选中行背景色 */
+QTreeView,QTableView  {
+    selection-background-color: rgba(0,120,212,100);
+}
+
+/* QTableView::item:focus{background-color:rgba(0,120,212,50);border: none;} */
+
+
+QDockWidget{
+    background-color:transparent; /* 透明 */
+    border:0px;
+}
+QDockWidget::title {
+    background-color:rgba(0,0,0,30); /*  半透明  */
+    }
+/*  dock widgets 重叠后 出现的 tab 标签 */
+QTabBar::tab { 
+    background-color:rgba(255,255,255,50); /* 半透明  */
+    }
+
+
+QLineEdit{background-color:rgba(0,0,0,30);}
+
+QStatusBar::item { border-color: transparent;}

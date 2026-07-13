@@ -6,11 +6,12 @@ import my_resource
 
 current_working_directory = os.getcwd()
 
+folder_qss = os.path.join(current_working_directory, "qss")
+
+
 folder_temporary = os.path.join(current_working_directory, "." + the_variables.software_name)
 
 user_config_file = os.path.join(folder_temporary, "JKui.ini")
-
-folder_qss = os.path.join(current_working_directory, "qss")
 
 data_file = os.path.join(folder_temporary ,"cache_data.pickle") 
 

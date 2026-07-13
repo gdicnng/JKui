@@ -35,6 +35,10 @@ jobs:
     - name: checkout
       uses: actions/checkout@v6
     
+    - name: 7z source
+      run: |
+        7z a -t7z -mx=9 "JKui_source.7z" JKui qss
+    
     - name: Set up Python
       uses: actions/setup-python@v6
       with:
@@ -55,7 +59,6 @@ jobs:
     - name: 7z
       run: |
         7z a -t7z -mx=9 "${{ env.file_name_start }}_${{ matrix.os }}_python_${{ matrix.python_version }}_${{ matrix.architecture }}.7z" .\dist\*
-        7z a -t7z -mx=9 "JKui_source.7z" .\JKui\*
         dir
 
     - name: Create or update prerelease 'latest' and upload file
