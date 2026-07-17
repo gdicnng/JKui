@@ -8,14 +8,16 @@ current_working_directory = os.getcwd()
 
 folder_qss = os.path.join(current_working_directory, "qss")
 
-
 folder_temporary = os.path.join(current_working_directory, "." + the_variables.software_name)
 
 user_config_file = os.path.join(folder_temporary, "JKui.ini")
 
 data_file = os.path.join(folder_temporary ,"cache_data.pickle") 
+available_file = os.path.join(folder_temporary ,"cache_available.pickle") 
 
 extra_database_file = os.path.join(folder_temporary ,"extra.db") 
+
+#internal_qss_file = os.path.join(folder_temporary, "internal.qss")
 
 #文件的二进制数据
 icon_for_mainwindow = pkgutil.get_data("my_resource", "icon_for_mainwindow.png")
@@ -23,6 +25,7 @@ icon_red = pkgutil.get_data("my_resource", r"icons_for_gamelist/red.png")
 icon_green = pkgutil.get_data("my_resource", r"icons_for_gamelist/green.png")
 icon_yellow = pkgutil.get_data("my_resource", r"icons_for_gamelist/yellow.png")
 icon_black = pkgutil.get_data("my_resource", r"icons_for_gamelist/black.png")
+icon_not_have = pkgutil.get_data("my_resource", r"icons_for_gamelist/not_have.png")
 #print(type(icon_red))
 #<class 'bytes'>
 

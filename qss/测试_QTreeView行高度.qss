@@ -1,4 +1,0 @@
-/* 表格 QTreeView 行高度 ，可以在 qss 中设置。似乎不是很重要，字体变大时，它似乎会自动适应。 */
-/* 表格 TableView 行高度 ，需要在程序里调 */
-
-QTreeView::Item{ height:50px; }

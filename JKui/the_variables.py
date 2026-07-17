@@ -8,10 +8,14 @@ command_line_options_for_emulator_to_export_data = ["-listxml", "-dtd"]
 
 current_id = None
 
+auto_select_last_game = False #QSettings 中有
+
 locale_original = None 
 # 获取当前语言区域 locale.setlocale(locale.LC_ALL)  
 
 icon_size=16
+use_icon_not_have = False
+use_icon_extra_resource = False
 
 sort_column = 0
 sort_reverse = False

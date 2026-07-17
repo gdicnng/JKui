@@ -32,14 +32,17 @@ select_path                   .\select
 versus_path                   .\versus
 warning_path                  .\warning
 
+.......
+
 """
 
 default_value = {
     "mame/translation_file": "mame.lst",
 
-    "ui/icon_size_for_gamelist": 16,
-    "ui/icon_size_for_icon_mode": 16,
-
+    "gamelist/icon_size_for_gamelist": 16,
+    "gamelist/icon_size_for_icon_mode": 16,
+    "gamelist/row_height_for_tableview": 0,
+    "gamelist/row_height_for_treeview": 0,
 
     "extra/icons": "icons.zip",
 

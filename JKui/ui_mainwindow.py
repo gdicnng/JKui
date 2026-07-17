@@ -3,6 +3,7 @@ import pickle
 import locale
 import re
 import sqlite3
+import functools
 
 from qtpy.QtWidgets import *
 from qtpy.QtGui import *
@@ -28,6 +29,7 @@ class TheMainWindow(QMainWindow):
 
     def __init__(self):
         super().__init__()
+        self.setObjectName("mainWindow")
 
         self.setWindowTitle(the_variables.software_name)
         #self.setGeometry(100, 100, 600, 400)
@@ -45,18 +47,33 @@ class TheMainWindow(QMainWindow):
         # 用户配置文件
         #self.new_settings = QSettings( "gdicnng" ,the_variables.software_name , self)
         self.new_settings = QSettings( the_files.user_config_file , QSettings.IniFormat , self)
+        if hasattr(self.new_settings, 'setIniCodec'):# pyside2
+            self.new_settings.setIniCodec(QTextCodec.codecForName("UTF-8")) 
         print(self.new_settings.fileName())
 
-        the_variables.user_settings = self.new_settings # 记录
-        # Store the settings in INI files. Note that INI files lose the distinction between numeric data and the strings used to encode them, 
-        # so values written as numbers shall be read back as QString.
-        
-        # 加载默认值
-        for key, value in the_user_settings_default_value.default_value.items():
-            if not self.new_settings.value(key):
-                self.new_settings.setValue(key, value)
-        # 更新 extra 路径记录
-        the_variables.update_extra_path()
+        def func_for_qsettings():
+            the_variables.user_settings = self.new_settings # 记录
+            # Store the settings in INI files. Note that INI files lose the distinction between numeric data and the strings used to encode them, 
+            # so values written as numbers shall be read back as QString.
+            
+            # 加载默认值
+            for key, value in the_user_settings_default_value.default_value.items():
+                if not self.new_settings.value(key):
+                    self.new_settings.setValue(key, value)
+            
+            # 更新 extra 路径记录
+            the_variables.update_extra_path()
+
+            # last game ，这个得移到启动最后，不然周边会使用 game_id 加载内容
+
+            # auto_select_last_game
+            try: the_variables.auto_select_last_game = self.new_settings.value("auto_select_last_game",False,type=bool)
+            except: the_variables.auto_select_last_game = False
+            # use_icon_not_have
+            try: the_variables.use_icon_not_have = self.new_settings.value("use_icon_not_have",False,type=bool)
+            except: the_variables.use_icon_not_have = False
+
+        func_for_qsettings()
           
 
         
@@ -78,10 +95,11 @@ class TheMainWindow(QMainWindow):
         self.new_shortcut = QShortcut(QKeySequence("Ctrl+P"), self)
         self.new_shortcut.activated.connect(self.new_func_key_ctrl_p)
 
+        QMetaObject.connectSlotsByName(self)
     ##################
     def new_func_creatCentralWidget(self):
         self.new_ui_central_widget = ui_central_widget.TheCentralWidget(self)
-        self.new_ui_central_widget.setObjectName("central_widget")
+        self.new_ui_central_widget.setObjectName("centralwidget")
         self.setCentralWidget(self.new_ui_central_widget)
         
         self.new_ui_central_widget.new_signal_for_id_change.connect( self.new_func_slot_for_receive_id_change )
@@ -121,7 +139,7 @@ class TheMainWindow(QMainWindow):
                 action =  QAction(style_name,self,)
                 action.setCheckable(True)
                 action.setChecked(False)
-                action.triggered.connect( self.new_func_set_style_by_menu )
+                action.triggered.connect( functools.partial(self.new_func_set_style_by_menu,action) )
                 
                 # 初始化 UI 时，标记 当前 style
                 if cuttent_style_name.lower() == style_name.lower():
@@ -160,7 +178,7 @@ class TheMainWindow(QMainWindow):
             # creat action for qss
             for qss_file_name in qss_file_list:
                 action =  QAction(qss_file_name,self,)
-                action.triggered.connect( self.new_func_load_qss_file_by_menu )
+                action.triggered.connect( functools.partial(self.new_func_load_qss_file_by_menu,action) )
                 action.setCheckable(True)
                 self.new_action_group_for_qss.addAction(action)
                 self.new_menu_ui_qss.addAction( action )
@@ -177,6 +195,44 @@ class TheMainWindow(QMainWindow):
         self.new_action_for_ui_translation_file = QAction("ui 翻译文件 ，未完成(ui translation file,not finished yet)",self,)
         #self.new_action_for_ui_translation_file.triggered.connect( self.new_func_set_ui_translation_file )
         self.new_menu_language.addAction(self.new_action_for_ui_translation_file)
+
+        ##### 字体等
+        self.new_menu_font = self.menuBar().addMenu("字体等")
+        # 字体 设置 字体
+        action_set_font = QAction("设置字体",self,)
+        action_set_font.setCheckable(False)
+        action_set_font.triggered.connect( self.new_func_for_set_font )
+        self.new_menu_font.addAction(action_set_font)
+
+        # 字体等 列表 行高
+        self.new_menu_font.addSeparator()
+        action_set_row_height = QAction("设置游戏列表行高",self,)
+        action_set_row_height.setCheckable(False)
+        action_set_row_height.triggered.connect( self.new_func_for_set_row_height )
+        self.new_menu_font.addAction(action_set_row_height)
+
+        # 字体等 游戏列表 设置图标大小
+        try:
+            icon_size = self.new_settings.value("gamelist/icon_size_for_gamelist",type=int) # 取值到 the_variables.icon_size
+        except:
+            icon_size = 0
+        if type(icon_size) is int:
+            if icon_size > 0:
+                the_variables.icon_size = icon_size
+        self.new_menu_font.addSeparator()
+        action_set_icon_size = QAction("设置图标大小",self,)
+        action_set_icon_size.setCheckable(False)
+        action_set_icon_size.triggered.connect( self.new_func_for_set_icon_size )
+        self.new_menu_font.addAction(action_set_icon_size)
+
+        # 字体等 游戏列表 选中行颜色
+        self.new_menu_font.addSeparator()
+        action_set_highlight_row_colour = QAction("设置选中行颜色",self,)
+        action_set_highlight_row_colour.setCheckable(False)
+        action_set_highlight_row_colour.triggered.connect( self.new_func_for_set_highlight_row_colour )
+        self.new_menu_font.addAction(action_set_highlight_row_colour)
+
+
 
         ##### 设置
         self.new_menu_settings = self.menuBar().addMenu("设置")
@@ -195,48 +251,73 @@ class TheMainWindow(QMainWindow):
 
         ##### 游戏列表
         self.new_menu_gamelist=self.menuBar().addMenu("游戏列表")
-        # 显示 tableview
+        # 游戏列表 刷新游戏列表
+        self.new_action_scan_roms_exist_split = QAction("刷新游戏列表 split (极简版本，仅检查文件是否存在)",self,)
+        self.new_action_scan_roms_exist_split.triggered.connect( self.new_func_scan_game_files_only_check_if_file_exists )
+        self.new_menu_gamelist.addAction(self.new_action_scan_roms_exist_split)
+        self.new_action_scan_roms_exist_merged = QAction("刷新游戏列表 merged (极简版本，仅检查文件是否存在)",self,)
+        self.new_action_scan_roms_exist_merged.triggered.connect(lambda:self.new_func_scan_game_files_only_check_if_file_exists(True))
+        self.new_menu_gamelist.addAction(self.new_action_scan_roms_exist_merged)
+        self.new_menu_gamelist.addSeparator()
+        # 游戏列表 显示 tableview
         self.new_action_show_tableview = QAction("显示 tableview",self,)
         self.new_action_show_tableview.triggered.connect( self.centralWidget().new_func_show_tableview )
         self.new_menu_gamelist.addAction(self.new_action_show_tableview)
-        # 显示 tableview 2 level
+        # 游戏列表 显示 tableview 2 level
         self.new_action_show_tableview_2_level = QAction("显示 tableview 2 level",self,)
         self.new_action_show_tableview_2_level.triggered.connect( self.centralWidget().new_func_show_tableview_2_level )
         self.new_menu_gamelist.addAction(self.new_action_show_tableview_2_level)
-        # 显示 treeview
+        # 游戏列表 显示 treeview
         self.new_action_show_treeview = QAction("显示 treeview",self,)
         self.new_action_show_treeview.triggered.connect( self.centralWidget().new_func_show_treeview )
         self.new_menu_gamelist.addAction(self.new_action_show_treeview)
-        # 本地排序
+        # 游戏列表 本地化排序
         self.new_menu_gamelist.addSeparator()
-        action_set_sort_use_locale = QAction("本地排序(仅翻译这一列)",self,)
+        action_set_sort_use_locale = QAction("本地化排序(仅翻译这一列)",self,)
         action_set_sort_use_locale.setCheckable(True)
         try:    the_variables.sort_use_locale = self.new_settings.value("gamelist/sort_use_locale",type=bool)
         except: the_variables.sort_use_locale = False
         action_set_sort_use_locale.setChecked(the_variables.sort_use_locale)
-        def sort_use_locale(checked):
-            if checked:
-                the_variables.sort_use_locale = True
-            else:
-                the_variables.sort_use_locale = False
-        action_set_sort_use_locale.toggled.connect( sort_use_locale )
+        action_set_sort_use_locale.toggled.connect( self.new_func_gamelist_sort_use_locale )
         self.new_menu_gamelist.addAction(action_set_sort_use_locale)
+        # 游戏列表 自动选择上一个游戏
         self.new_menu_gamelist.addSeparator()
+        action_set_auto_select_last_game = QAction("自动选择上一个游戏",self,)
+        action_set_auto_select_last_game.setCheckable(True)
+        try:    the_variables.auto_select_last_game = self.new_settings.value("auto_select_last_game",False,type=bool)
+        except: the_variables.auto_select_last_game = False
+        action_set_auto_select_last_game.setChecked(the_variables.auto_select_last_game)
+        action_set_auto_select_last_game.toggled.connect( self.new_func_gamelist_auto_select_last_game )
+        self.new_menu_gamelist.addAction(action_set_auto_select_last_game)
+        # 游戏列表 标记未拥有游戏
+        self.new_menu_gamelist.addSeparator()
+        action_set_mark_not_have = QAction("标记未拥有游戏",self,)
+        action_set_mark_not_have.setCheckable(True)
+        try:    the_variables.use_icon_not_have = self.new_settings.value("use_icon_not_have",False,type=bool)
+        except: the_variables.use_icon_not_have = False
+        action_set_mark_not_have.setChecked(the_variables.use_icon_not_have)
+        action_set_mark_not_have.toggled.connect( self.new_func_gamelist_mark_not_have )
+        self.new_menu_gamelist.addAction(action_set_mark_not_have)
+        # 游戏列表 全局过滤
+        self.new_menu_gamelist.addSeparator()
+        action_set_gamelist_filter = QAction("全局过滤",self,)
+        action_set_gamelist_filter.setCheckable(False)
+        action_set_gamelist_filter.triggered.connect( self.new_func_for_set_gamelist_filter )
+        self.new_menu_gamelist.addAction(action_set_gamelist_filter)
 
 
         ##### 周边
         self.new_menu_extra = self.menuBar().addMenu("周边")
-        #
+        # 周边 显示/隐藏 周边窗口
         self.new_menu_for_show_dock_windows = self.new_menu_extra.addMenu("显示/隐藏 周边窗口")
         self.new_menu_extra.addSeparator()
-        #
+        # 周边 重新加载周边文本
         action_for_load_extra_text = QAction("重新加载周边文本",self,)
         action_for_load_extra_text.triggered.connect(self.new_func_load_extra_text_to_database)
         self.new_menu_extra.addAction(action_for_load_extra_text)
-        #self.new_menu_for_load_extra_text.addAction(self.new_func_load_extra_text_to_database)
 
+        ##### 其它
         self.new_ui_menu_other = self.menuBar().addMenu("其它")
-
         action_show_python_version = QAction("显示 python 版本",self,)
         action_show_python_version.triggered.connect(self.new_func_show_python_version)
         self.new_ui_menu_other.addAction(action_show_python_version)
@@ -365,10 +446,11 @@ class TheMainWindow(QMainWindow):
 
         
         # 仅显示两个就行了
-        dock_window_1 = getattr(self,"new_dock_image_1")
-        dock_window_1.setVisible(True)
-        dock_window_2 = getattr(self,"new_dock_image_2")
-        dock_window_2.setVisible(True)
+        # 不显示算了
+        #dock_window_1 = getattr(self,"new_dock_image_1")
+        #dock_window_1.setVisible(True)
+        #dock_window_2 = getattr(self,"new_dock_image_2")
+        #dock_window_2.setVisible(True)
         
 
         # index,添加到菜单
@@ -419,6 +501,7 @@ class TheMainWindow(QMainWindow):
         #self.new_tool_bar_for_search.setMovable(False)
         self.new_tool_bar_for_search.setAllowedAreas(Qt.TopToolBarArea)
         self.new_tool_bar_for_search.new_signal_for_search.connect(self.new_func_for_search)
+        self.new_tool_bar_for_search.new_signal_for_clear_search.connect(self.centralWidget().new_func_cancel_search)
         self.addToolBar(self.new_tool_bar_for_search)
 
 
@@ -434,16 +517,16 @@ class TheMainWindow(QMainWindow):
         
         super().closeEvent(event)
 
-
+    ####################
     
-    # 初始化，从 MAME 导出 数据
+    # 初始化 类型一，从 MAME 导出 数据
     def new_func_load_data_from_emulator(self,):
         print()
         print( "export data from emulator")
 
         mame_path = self.new_settings.value("mame/path") 
         mame_working_directory = self.new_settings.value("mame/working_directory") 
-        mame_path, mame_working_directory = misc_funcs.get_mame_path_and_working_directory(mame_path, mame_working_directory)
+        mame_path, mame_working_directory = misc_funcs.get_abspath_for_mame_and_working_directory(mame_path, mame_working_directory)
         
         process = QProcess(self)
         if mame_working_directory:
@@ -498,7 +581,7 @@ class TheMainWindow(QMainWindow):
 
         self.new_func_progressbar_hide()
 
-    # 初始化，从 临时文件 读取 数据
+    # 初始化 类型二，从 临时文件 读取 数据
     def new_func_load_gamelist_data_from_file(self):
         filename = the_files.data_file
         data = None
@@ -515,7 +598,6 @@ class TheMainWindow(QMainWindow):
                 sys.exit()
         
         self.new_func_update_model_data(data)
-
 
     def new_func_save_gamelist_data(self,data):
         print()
@@ -547,13 +629,31 @@ class TheMainWindow(QMainWindow):
         self.new_thread_for_update_model_data.started.connect(lambda: self.new_func_update_model_data_work(data))
         
         self.new_signal_for_update_model_data_finished.connect(self.new_func_progressbar_hide)
+        self.new_signal_for_update_model_data_finished.connect(self.new_func_update_model_data_after)
         self.new_signal_for_update_model_data_finished.connect(self.new_thread_for_update_model_data.quit)
         self.new_signal_for_update_model_data_finished.connect(self.new_thread_for_update_model_data.deleteLater)
-        self.new_signal_for_update_model_data_finished.connect(self.new_func_update_model_data_after)
         self.new_thread_for_update_model_data.start()
     def new_func_update_model_data_work(self,data):
+        # 拥有列表
+        filename = the_files.available_file
+        if os.path.isfile(filename):
+            try:
+                file = open(filename, 'rb')
+                data_from_pickle = pickle.load( file )
+                file.close()
+                if isinstance(data_from_pickle,set):
+                    ui_models.available_set = data_from_pickle
+                else:
+                    print("拥有列表数据出错，不是 set 类型")
+                    ui_models.available_set = set()
+            except:
+                print( "read pickle failed")
+                print( filename )
+                QMessageBox.critical(self, "拥有列表数据读取失败", "pickle文件读取失败。\n文件可能损坏;\n或者用户无权限读取该文件：\n" + filename)
+                ui_models.available_set = set()
+
         # 原始图标
-        ui_models.load_icon()
+        ui_models.load_and_resize_internal_icon()
 
         # 更新模型数据
         ##'columns', 'dict_data', 'internal_index', 'machine_dict', 'mame_version', 'set_data'
@@ -593,6 +693,9 @@ class TheMainWindow(QMainWindow):
         #
         ui_models.update_some_value()
 
+        # 更新过滤项
+        misc_funcs.update_filter_set(self.new_settings)
+
         # 加载外部索引,wip
         # external_index
         # external_index_by_source
@@ -621,8 +724,18 @@ class TheMainWindow(QMainWindow):
         ui_models.rebuild_index(top_index_list)
         self.new_ui_index.model().endResetModel()
 
+        # 加载图标
+        icon_zip_path = self.new_settings.value("extra/icons")
+        if icon_zip_path:
+            try:
+                ui_models.icon_extra_resource = misc_funcs.load_icons_from_zip(icon_zip_path,ui_models.all_set)
+            except:
+                ui_models.icon_extra_resource = dict()
+            if ui_models.icon_extra_resource:
+                the_variables.use_icon_extra_resource = True
         self.new_signal_for_update_model_data_finished.emit()
-        
+    
+    # 启动时，初始化，最后一步，到这里
     def new_func_update_model_data_after(self):
         # 更新标题
         if ui_models.mame_version:
@@ -631,7 +744,16 @@ class TheMainWindow(QMainWindow):
             self.setWindowTitle(the_variables.software_name + "  -  " + temp)
         
         #初始化之后，读取的设置
-        self.centralWidget().new_func_for_load_settings()
+        self.centralWidget().new_func_for_load_settings() # 游戏列表状态恢复
+        self.new_func_set_row_height_for_tableview(at_start=True) # tableview 行高
+        self.new_func_set_internal_qss() # treeview 行高，以及字体等，在 qss 中设置
+
+        # last game ，这个得移动到启动最后，不然周边会使用 game_id 加载内容
+        try:last_game = self.new_settings.value("game_remember",type=str)
+        except:last_game = ""
+        if last_game:
+            the_variables.current_id = last_game
+
         self.new_func_index_select_remember_after_load_settings()
 
 
@@ -639,8 +761,7 @@ class TheMainWindow(QMainWindow):
         external_inedex = dict()
         # 待补充
         return external_inedex
-        
-
+    
     def new_func_load_translation_file(self,):
         translation_file_path = self.new_settings.value("mame/translation_file")
         if not translation_file_path:
@@ -650,11 +771,11 @@ class TheMainWindow(QMainWindow):
                 ui_models.load_gamelist_translation_file(translation_file_path)
             except:
                 print("load translation file failed")
-        
 
-    #################
-    #################
-    #################
+    #################################
+    #################################
+    #################################
+    #################################
 
     def new_func_do_nothing(self,):
         print( "do nothing")
@@ -674,8 +795,19 @@ class TheMainWindow(QMainWindow):
         
         # qss ，在设置的地方保存
 
+        # 记录 目录
         self.new_settings.setValue("index/index_id_1",the_variables.index_id_1)
         self.new_settings.setValue("index/index_id_2",the_variables.index_id_2)
+
+        # 记录游戏
+        if the_variables.current_id is not None:
+            self.new_settings.setValue("game_remember",the_variables.current_id)
+        # 是否自动选择游戏
+        self.new_settings.setValue("auto_select_last_game",the_variables.auto_select_last_game)
+        # 标记未拥有游戏
+        self.new_settings.setValue("use_icon_not_have",the_variables.use_icon_not_have)
+
+
 
         self.centralWidget().new_func_for_save_settings()
 
@@ -685,21 +817,27 @@ class TheMainWindow(QMainWindow):
         
         # 刚开始，初始化之前，还没有设置时，没有数据
         
-        try: self.restoreGeometry(self.new_settings.value("mainwindow/geometry"))
+        try: 
+            self.restoreGeometry(self.new_settings.value("mainwindow/geometry"))
+            print("restoreGeometry")
         except: pass
         
-        try:self.restoreState(self.new_settings.value("mainwindow/state"))
+        try:
+            self.restoreState(self.new_settings.value("mainwindow/state"))
+            print("restoreState")
         except:pass
-        
+
         # style
         try : style_name = self.new_settings.value("mainwindow/style")
-        except : pass
+        except : style_name = "Fusion"
+        if not style_name:
+            style_name = "Fusion"
         if style_name:
             self.new_func_set_style(style_name)
         
         # qss
         try : qss_file = self.new_settings.value("mainwindow/qss")
-        except : pass
+        except : qss_file = ""
         if qss_file:
             self.new_func_load_qss_file_at_start(qss_file)
         
@@ -712,14 +850,12 @@ class TheMainWindow(QMainWindow):
         except: the_variables.sort_use_locale = False
 
 
-    @Slot()
-    def new_func_load_qss_file_by_menu(self,):
+    def new_func_load_qss_file_by_menu(self,sender): # sender = self.sender() # pyside2 中没用？
         # qss 文件，位于 the_files.folder_qss 中
         
         print()
         print("slot app.setStyleSheet")
         
-        sender = self.sender()
         qss_file = sender.text()
         if not qss_file : return
         
@@ -798,7 +934,6 @@ class TheMainWindow(QMainWindow):
         # 保存 设置
         self.new_settings.setValue("mainwindow/qss","")
     
-
     def new_func_set_style(self,style_name=""):
         print("")
         print("app.setStyle")
@@ -830,12 +965,10 @@ class TheMainWindow(QMainWindow):
                     action.setChecked(True)
                     break        
 
-    @Slot()
-    def new_func_set_style_by_menu(self,):
+    def new_func_set_style_by_menu(self,sender): # sender = self.sender() # pyside2 中没用？
         print("")
         print("set style by menu")
         
-        sender = self.sender()
         style_name = sender.text()
         
         if not style_name : return
@@ -923,42 +1056,15 @@ class TheMainWindow(QMainWindow):
 
     @Slot(str,str)
     def new_func_slot_for_receive_index(self,id_1,id_2):
-        #print("")
-        #print("slot to receive index id")
-        #print("id_1: ",id_1)
-        #print("id_2: ",id_2)
-
-        # 记录 
-        the_variables.index_id_1 = id_1
-        the_variables.index_id_2 = id_2
-
         central_widget = self.centralWidget()
-        current_table = central_widget.currentWidget()
-        current_table.model().new_func_show_by_index(id_1,id_2)
+        central_widget.new_func_show_by_index(id_1,id_2)
+
     
     @Slot(str,bool,bool,tuple)
     def new_func_for_search(self,search_string,use_re=False,ignore_case=True,search_columns=tuple(),):
-        # search_string,use_re=False,ignore_case=True,search_columns=tuple(),
-        # 搜索字符串
-        # 是否正则
-        # 是否忽略大小写
-        # 搜索列 范围 tuple
-        
-
-        temp = search_string.strip()
-        if temp:
-            if use_re:
-                try:
-                    re.compile(temp)
-                except:
-                    QMessageBox.warning(self,"warning","正则表达式可能出错")
-                    return
-
-            central_widget = self.centralWidget()
-            current_table = central_widget.currentWidget()
-            current_table.model().new_func_show_search_result(search_string,use_re=use_re,ignore_case=ignore_case,search_columns=search_columns)
-
-
+        central_widget = self.centralWidget()
+        central_widget.new_func_for_search(search_string,use_re=use_re,ignore_case=ignore_case,search_columns=search_columns)
+    
     def new_func_index_select_remember_after_load_settings(self,):
         print()
         print("index select the remembered one")
@@ -1085,7 +1191,6 @@ class TheMainWindow(QMainWindow):
         else:
             print("用户点击了“否”或关闭了对话框")
             # 在这里添加取消后的逻辑        
-
     # menu 周边路径设置
     @Slot()
     def new_func_set_extra_path(self,):
@@ -1102,7 +1207,6 @@ class TheMainWindow(QMainWindow):
             print("用户点击了“确认”")
         else:
             print("用户点击了“取消”或关闭了对话框")
-
     # menu 翻译文件设置
     @Slot()
     def new_func_set_gamelist_translation_file(self,):
@@ -1119,7 +1223,16 @@ class TheMainWindow(QMainWindow):
             print("用户点击了“确认”")
         else:
             print("用户点击了“取消”或关闭了对话框")
-
+    # menu 字体等 gamelist 设置图标大小
+    @Slot()
+    def new_func_for_set_icon_size(self):
+        print("设置图标大小")
+        try:
+            self.new_dialog_for_set_gamelist_icon_size
+        except:
+            self.new_dialog_for_set_gamelist_icon_size = ui_small_windows.Dialog_for_set_gamelist_icon_size(self.new_settings,self,)
+        self.new_dialog_for_set_gamelist_icon_size.new_func_set_values()
+        self.new_dialog_for_set_gamelist_icon_size.exec()
     # menu 显示 python 版本
     @Slot()
     def new_func_show_python_version(self,):
@@ -1131,7 +1244,305 @@ class TheMainWindow(QMainWindow):
             self.new_dialog_for_show_python_version = ui_small_windows.Dialog_for_show_python_version( self)
 
         self.new_dialog_for_show_python_version.exec()
-    
+    # menu gamelist 标记未拥有游戏
+    @Slot(bool)
+    def new_func_gamelist_mark_not_have(self,checked):
+        if checked:
+            the_variables.use_icon_not_have = True
+        else:
+            the_variables.use_icon_not_have = False
+        self.centralWidget().new_func_refresh_layoutchange()
+    # menu gamelist 排序使用本地化
+    @Slot(bool)
+    def new_func_gamelist_sort_use_locale(self,checked):
+        if checked:
+            the_variables.sort_use_locale = True
+        else:
+            the_variables.sort_use_locale = False
+    # menu gamelist 切换列表时，自动选择上一个游戏
+    @Slot(bool)
+    def new_func_gamelist_auto_select_last_game(self,checked):
+        if checked:
+            the_variables.auto_select_last_game = True
+        else:
+            the_variables.auto_select_last_game = False
+
+    # menu 字体等 gamelist 设置行高
+    @Slot()
+    def new_func_for_set_row_height(self):
+        print("设置行高")
+        try:
+            self.new_dialog_for_set_gamelist_row_height
+        except:
+            self.new_dialog_for_set_gamelist_row_height = ui_small_windows.Dialog_for_set_gamelist_row_height(self.new_settings,self,)
+        self.new_dialog_for_set_gamelist_row_height.new_func_set_values()
+        if self.new_dialog_for_set_gamelist_row_height.exec():
+            print("用户点击了“确认”")
+            self.centralWidget().new_func_refresh_layoutchange()
+    # menu 字体 设置字体
+    @Slot()
+    def new_func_for_set_font(self):
+        print("设置字体")
+        try:
+            self.new_dialog_for_set_font
+        except:
+            self.new_dialog_for_set_font = ui_small_windows.Dialog_for_set_font(self.new_settings,self,)
+        self.new_dialog_for_set_font.new_func_set_values()
+        if self.new_dialog_for_set_font.exec() :
+            self.centralWidget().new_func_refresh_layoutchange()
+    # menu 字体等 游戏列表 选中行颜色
+    def new_func_for_set_highlight_row_colour(self):
+        print("设置选中行颜色")
+        try:
+            self.new_dialog_for_set_gamelist_highlight_row_colour
+        except:
+            self.new_dialog_for_set_gamelist_highlight_row_colour = ui_small_windows.Dialog_for_set_gamelist_highlight_row_colour(self.new_settings,self,)
+        self.new_dialog_for_set_gamelist_highlight_row_colour.new_func_set_values()
+        if self.new_dialog_for_set_gamelist_highlight_row_colour.exec():
+            print("用户点击了“确认”")
+            #self.centralWidget().new_func_refresh_layoutchange()
+
+
+    @Slot()
+    def new_func_for_set_gamelist_filter(self):
+        print("设置游戏列表的全局过滤")
+        try:
+            self.new_dialog_for_set_gamelist_filter
+        except:
+            self.new_dialog_for_set_gamelist_filter = ui_small_windows.Dialog_to_set_gamelist_filter(self.new_settings,self,)
+        self.new_dialog_for_set_gamelist_filter.new_func_set_values()
+        if self.new_dialog_for_set_gamelist_filter.exec():
+            print("用户点击了“确认”")
+            self.centralWidget().new_func_reload_gamelist()
+
+    # menu gamelist  扫描游戏文件，极简版，只扫描 .zip/.7z/文件夹 是否存在
+    def new_func_scan_game_files_only_check_if_file_exists(self,merged=False):
+        print()
+        print("scan game files, only check if file exists")
+
+        self.new_func_show_progress_bar()
+
+        mame_path = self.new_settings.value("mame/path") 
+        mame_working_directory = self.new_settings.value("mame/working_directory") 
+        mame_path, mame_working_directory = misc_funcs.get_abspath_for_mame_and_working_directory(mame_path, mame_working_directory)
+        command_list = ["-showconfig"]
+
+        print(mame_path)
+        print(mame_working_directory)
+        print(command_list)
+
+        self.new_process_for_mamepath = QProcess(self)
+        if mame_working_directory:
+            if os.path.isdir(mame_working_directory):
+               self.new_process_for_mamepath.setWorkingDirectory(mame_working_directory)
+        
+        self.new_buffer_to_hold_mame_path_info = io.BytesIO()
+
+        #self.new_process_for_mamepath.setProcessChannelMode(QProcess.ForwardedChannels)
+        self.new_process_for_mamepath.setProcessChannelMode(QProcess.ForwardedErrorChannel)
+
+        self.new_process_for_mamepath.readyReadStandardOutput.connect(lambda: self.new_buffer_to_hold_mame_path_info.write(self.new_process_for_mamepath.readAllStandardOutput().data()))
+        self.new_process_for_mamepath.readyReadStandardError.connect(lambda: self.new_process_for_mamepath.readAllStandardError())
+        self.new_process_for_mamepath.finished.connect(lambda: self.new_func_scan_game_files_only_check_if_file_exists_step_2(merged))
+        self.new_process_for_mamepath.start(mame_path, command_list)
+
+    def new_func_scan_game_files_only_check_if_file_exists_step_2(self,merged=False):
+        
+        self.new_buffer_to_hold_mame_path_info.seek(0)
+        
+        #rompath                   "roms;"
+        str_1 = r"^rompath\s+(\S.*?)\s*$"
+        p=re.compile(str_1, )
+        rompath=""
+        for line in self.new_buffer_to_hold_mame_path_info:
+            line = line.decode("utf_8_sig",errors='backslashreplace')
+            m = p.search(line)
+            if m :
+                rompath = m.group(1)
+                break
+        print("rompath")
+        print(rompath)
+
+        # game id set
+        data =  misc_funcs.scan_game_files_only_check_if_file_exists_work(rompath, self.new_settings, merged)
+
+        # 更新数据
+        ui_models.available_set = data
+
+        # 保存到文件
+        filename = the_files.available_file
+        try:
+            file = open( filename , 'wb' )
+            pickle.dump( data , file )
+            file.close()
+        except:
+            QMessageBox.critical(self, "Error", "拥有列表保存失败，检查此文件是否有写入权限:"+"\n"+filename)
+
+        # 跳转到拥有列表，刷新数据
+        #the_variables.index_id_1
+        #the_variables.index_id_2
+        if the_variables.index_id_1 == "available_set":
+            self.new_func_slot_for_receive_index(the_variables.index_id_1, the_variables.index_id_2)
+
+        self.new_func_progressbar_hide()
+    ######
+    ######
+    ######
+
+    # 游戏列表数量变化
+    @Slot(int)
+    def on_modelForTableView_singalGamelistNumberChanged(self,game_list_number):
+        self.new_func_gamelist_number_changed(game_list_number)
+    @Slot(int)
+    def on_modelForTableView2_singalGamelistNumberChanged(self,game_list_number):
+        self.new_func_gamelist_number_changed(game_list_number)
+    @Slot(int)
+    def on_modelForTreeView_singalGamelistNumberChanged(self,game_list_number):
+        self.new_func_gamelist_number_changed(game_list_number)        
+    #
+    @Slot(int)
+    def new_func_gamelist_number_changed(self,game_list_number):
+        self.new_ui_statusbar_for_current_number.setText(f"{game_list_number}/")
+
+    def new_func_set_internal_qss(self):
+        print("set internal qss")
+
+        qss_string = []
+
+        # QTreeview 行高
+        try:row_height = self.new_settings.value("gamelist/row_height_for_treeview",type=int)
+        except:row_height = 0
+        if type(row_height) is int:
+            if row_height == 0:
+                row_height_qss = ""
+                qss_string.append(row_height_qss)
+            elif row_height > 0:
+                row_height_qss = f"QTreeView::Item{{ height:{row_height}px; }}"
+                qss_string.append(row_height_qss)
+
+        # 字体
+        the_keys = ["all","gamelist",            "extra",     "extra_command",             "extra_command_english"]
+        the_prefix=["*",  "QTreeView,QTableView","QTextEdit", "QTextEdit#textedit_command","QTextEdit#textedit_command_english"]
+        for key,prefix in zip(the_keys,the_prefix):
+            font_family = self.new_settings.value(f"font_family/{key}",)
+            try:
+                font_size = self.new_settings.value(f"font_size/{key}",type=int)
+            except:
+                font_size = 0
+            font_family_qss = ""
+            font_size_qss = ""
+            if font_family:
+                font_family_qss = f' font-family: "{font_family}"; '
+            if type(font_size) == int:
+                if font_size > 0:
+                    font_size_qss = f" font-size: {font_size}px; "
+            if font_family_qss or font_size_qss:
+                #qss_string.append(prefix + "{ " + font_family_qss + font_size_qss + " }" )
+                qss_string.append(prefix + "{ "  )
+                if font_family_qss:
+                    qss_string.append(font_family_qss)
+                if font_size_qss:
+                    qss_string.append(font_size_qss)
+                qss_string.append( " }" )
+
+        # 选中行颜色
+        settings = self.new_settings
+        # 背景色
+        background_r = -1
+        background_g = -1
+        background_b = -1
+        background_a = 255
+        try:
+            background = settings.value("gamelist_highlight/background")
+        except:
+            background = ""
+        if background :
+            try:
+                background_r = int(background.split(",")[0])
+                background_g = int(background.split(",")[1])
+                background_b = int(background.split(",")[2])
+                background_a = int(background.split(",")[3])
+            except:
+                background_r = -1
+                background_g = -1
+                background_b = -1
+                background_a = 255
+        value_ok=False
+        if background_r >= 0 and background_g >= 0 and background_b >= 0 and background_a >= 0: 
+            if  background_r <= 255 and background_g <= 255 and background_b <= 255 and background_a <= 255:
+                value_ok=True
+        if not value_ok:
+            background_r = -1
+            background_g = -1
+            background_b = -1
+            background_a = 255
+        # 文字颜色
+        colour_r = -1
+        colour_g = -1
+        colour_b = -1
+        colour_a = 255
+        try:
+            colour = settings.value("gamelist_highlight/colour",)
+        except:
+            colour = ""
+        if colour :
+            try:
+                colour_r = int(colour.split(",")[0])
+                colour_g = int(colour.split(",")[1])
+                colour_b = int(colour.split(",")[2])
+                colour_a = int(colour.split(",")[3])
+            except:
+                colour_r = -1
+                colour_g = -1
+                colour_b = -1
+                colour_a = 255
+        value_ok=False
+        if colour_r >= 0 and colour_g >= 0 and colour_b >= 0 and colour_a >= 0: 
+            if colour_a <= 255 and colour_r <= 255 and colour_g <= 255 and colour_b <= 255:
+                value_ok=True
+        if not value_ok:
+            colour_r = -1
+            colour_g = -1
+            colour_b = -1
+            colour_a = 255
+
+        background_qss=""
+        if background_r >= 0 and background_g >= 0 and background_b >= 0 and background_a >= 0:
+            if background_r <=255 and background_g <=255 and background_b <=255 and background_a <=255:
+                background_qss=f"selection-background-color: rgba({background_r},{background_g},{background_b},{background_a});"
+        colour_qss=""
+        if colour_r >= 0 and colour_g >= 0 and colour_b >= 0 and colour_a >= 0:
+            if colour_r <=255 and colour_g <=255 and colour_b <=255 and colour_a <=255:
+                colour_qss=f"selection-color: rgba({colour_r},{colour_g},{colour_b},{colour_a});"
+        if background_qss or colour_qss:
+            qss_string.append(f"QTreeView,QTableView{{ {background_qss} {colour_qss} }}")
+
+        # 其它 
+
+        ###
+        qss_string="\n".join(qss_string)
+        print(qss_string)
+        self.setStyleSheet(qss_string)
+
+    def new_func_set_row_height_for_tableview(self,at_start=False):
+        print("set row height for tableview")
+        for widget in self.centralWidget().children():
+            if isinstance(widget,QTableView):
+                try:row_height = self.new_settings.value("gamelist/row_height_for_tableview",type=int)
+                except:row_height = 0
+                
+                if type(row_height) is not int:
+                    return
+                
+                if row_height < 0:
+                    return
+
+                if row_height == 0:
+                    if not at_start:
+                        widget.verticalHeader().resetDefaultSectionSize()
+                elif row_height > 0:
+                    widget.verticalHeader().setDefaultSectionSize(row_height)
+
     def new_func_key_ctrl_p(self):
         """按下 Ctrl+P 时触发的槽函数"""
         focused = QApplication.focusWidget()

@@ -3,6 +3,7 @@ from qtpy.QtWidgets import *
 from qtpy.QtCore import *
 
 import ui_models
+import the_variables
 
 
 
@@ -32,9 +33,12 @@ class My_Tree_View(QTreeView):
         
         # 单选、多选
         self.setSelectionMode(QAbstractItemView.SingleSelection )
+
+        self.header().setStretchLastSection(False)
     
     def new_func_set_model(self,):
         self.setModel(ui_models.Model_for_tree_view(self))
+        self.model().new_signal_time_for_choose_remember_game.connect(self.new_func_scrollto_to_last_game)
     
     # 右键 菜单
     def contextMenuEvent(self,e):
@@ -54,23 +58,13 @@ class My_Tree_View(QTreeView):
         print("")
         print("do nothing")
     
-    def currentChanged(self,current, previous): # QModelIndex
-        if previous.isValid():
-            row_previous = previous.row()
-        else:
-            row_previous = None
-
-        if current.isValid():
-            row_current = current.row()
-        else:
-            row_current = None
-
-        if row_current != row_previous:
-            game_id, game_info = self.model().new_func_get_id_and_item_by_index(current)
-            print("row changed: ",row_current, game_id)
+    def selectionChanged(self, selected, deselected):
+        if not selected.isEmpty():
+            #print("selected: ", selected.indexes()[0].row())
+            game_id, game_info= self.model().new_func_get_id_and_item_by_index(selected.indexes()[0])
+            print("selectionChanged",game_id)
             self.parent().new_signal_for_id_change.emit(game_id)
-    
-        super().currentChanged(current, previous)
+        super().selectionChanged(selected, deselected)
 
     def mouseDoubleClickEvent(self, event):
         index=self.indexAt(event.position().toPoint())
@@ -89,8 +83,28 @@ class My_Tree_View(QTreeView):
             print("doubleClicked: ", game_id)
             self.parent().new_func_start_emulator(game_id,game_info=game_info,hide=hide)
 
+    def new_func_scrollto_row_by_game_id(self,game_id):
+        if not game_id:
+            return
 
+        index = self.model().new_func_get_index_by_game_id(game_id)
 
+        if not index: # 可能返回 None
+            return
+        
+        if index.isValid():
+            self.scrollTo(index,hint=QAbstractItemView.PositionAtCenter)
+            self.setCurrentIndex(index)
+
+    @Slot()
+    def new_func_scrollto_to_last_game(self,):
+        if not the_variables.auto_select_last_game:
+            return
+        if not the_variables.current_id:
+            return        
+        self.new_func_scrollto_row_by_game_id(the_variables.current_id)
+
+    
     #def keyPressEvent(self, event):
     #    # home 
     #    if event.key() == Qt.Key_Home:

@@ -1,11 +1,12 @@
 import os
+import zipfile
 
 import ui_models
 
 
 
 
-def get_mame_path_and_working_directory(mame_exe_path_old="", mame_working_directory_old=""):
+def get_abspath_for_mame_and_working_directory(mame_exe_path_old="", mame_working_directory_old=""):
     # 值保存在 qsettings 里，内容再从这里过一遍
 
     mame_exe_path = ""
@@ -29,6 +30,105 @@ def get_mame_path_and_working_directory(mame_exe_path_old="", mame_working_direc
     
     return mame_exe_path, mame_working_directory
 
+def scan_game_files_only_check_if_file_exists_work(rompath,qsettings,merged=False):
+    def get_roms_folder_list(rompath):
+        
+        settings = qsettings
+        mame_path = settings.value("mame/path") 
+        mame_working_directory = settings.value("mame/working_directory") 
+        mame_path, mame_working_directory = get_abspath_for_mame_and_working_directory(mame_path, mame_working_directory)
+        
+        roms_folder_list = []
+        
+        if rompath:
+            rompath = rompath.replace(r'"',"") # 去掉双引号
+        
+        for x in rompath.split(r';'):
+            if x:
+                #######
+                # rompath ，记录的相对路径，是相对于模拟器的
+                ### ###
+                # 还有一种情况
+                # 路径里有变量：$HOME/mame/roms
+                    ####
+                    # 有变量的，到底有几种格式？
+                
+                # 情况1，如果有变量，展开，
+                temp_path = x
+                try:
+                    temp_path = os.path.expandvars( x )
+                except:
+                    temp_path = x
+
+                if os.path.isabs( temp_path ): # 如果是，绝对路径，不用转换
+                    roms_folder_list.append( temp_path )
+                else: # 如果是，相对路径，转换
+                    y = os.path.join(mame_working_directory,temp_path)
+                    roms_folder_list.append( y )
+        return roms_folder_list
+
+    def get_files_names_in_rompath(merged = False,roms_folder_list=None):
+        # 仅检查文件 存在 与否
+        # 不深度检查文件的 正确性、完整性
+        # *.zip 、*.7x 、文件夹
+        temp=[]
+        
+        if roms_folder_list is None:
+            roms_folder_list = []
+        
+        for a_folder in roms_folder_list:
+            if not os.path.isdir(a_folder):
+                continue
+            
+            (dirpath, dirnames, filenames) = next( os.walk(a_folder) )
+            
+            # 文件夹
+            for name in dirnames:
+                temp.append( name.lower() )
+            
+            # zip or 7z
+            for name in filenames:
+                
+                name_lower=name.lower()
+                
+                if name_lower.endswith(r".zip") :
+                    temp.append(name_lower[0:-4]) # .zip
+                elif name_lower.endswith(r".7z"):
+                    temp.append(name_lower[0:-3]) # .7z
+                    
+        
+        temp_set = set( temp )
+        
+        temp_set = ui_models.all_set & temp_set
+        
+        # merged
+        if merged :
+            # 现有的主版
+            the_parent = temp_set & ui_models.parent_set
+            
+            # 其中，有副版本的
+            the_parent = the_parent & set( ui_models.parent_to_clone.keys() )
+            
+            # 关联的副版本
+            the_colne = []
+            for x in the_parent:
+                the_colne.extend( ui_models.parent_to_clone[x] )
+            the_colne = set( the_colne )
+            
+            # 合并
+            the_result = temp_set | the_colne
+            return  the_result
+        
+        # split
+        else:
+            return temp_set
+
+    rompath_folder_list = get_roms_folder_list(rompath)
+    for a_folder in rompath_folder_list:
+        print(a_folder)
+    result = get_files_names_in_rompath(merged,rompath_folder_list)
+    print("numbers :",len(result))
+    return result
 
 # internal_index
 def get_id_list_from_internal_index(id_1,id_2="",):
@@ -132,3 +232,102 @@ def get_id_list_from_external_index_by_source(id_1,id_2=""):
     
     return the_id_list #  list 或 set
 
+def load_icons_from_zip(icon_zip_path,all_set=set()):
+    # 读取所有文件，二进制数据
+    result = dict()
+
+    if not os.path.isfile(icon_zip_path):
+        return result
+    
+    try:
+        file = open(icon_zip_path, 'rb')
+    except:
+        return result
+    
+    if all_set:
+        limitation = True
+    else:
+        limitation = False
+
+    zip_ref = zipfile.ZipFile(file, 'r')
+    
+    for file_name in zip_ref.namelist():
+        if "/" in file_name:
+            continue
+        
+        if not file_name.endswith(".ico"):
+            continue
+
+        id_name = file_name.split(".")[0]
+        
+        if limitation:
+            if id_name in all_set:
+                try:
+                    with zip_ref.open(file_name,mode="r") as f:
+                        data = f.read()
+                        result[id_name] = data
+                except:
+                    pass
+
+        else:
+            try:
+                with zip_ref.open(file_name,mode="r") as f:
+                    data = f.read()
+                    result[id_name] = data
+            except:
+                pass
+
+    try:
+        zip_ref.close()
+        file.close()
+    except:
+        pass
+
+    if result:
+        print()
+        print("load icons from zip",len(result))
+
+    return result
+
+def update_filter_set(qsettings):
+
+    settings = qsettings
+
+    result = set()
+
+    items=set()
+
+    value = settings.value("gamelist/filter")
+    if type(value) == str:
+        value = value.strip()
+        if value:
+            for item in value.split(","):
+                item = item.strip()
+                if item:
+                    items.add(item)
+
+    result_list = []
+    for item in items:
+        print(item)
+        if item in ("status preliminary","status good","status imperfect"):
+            id_1,id_2 = item.split(" ")
+            game_list = ui_models.get_id_list_from_index(id_1,id_2)
+            print(len(game_list))
+            result_list.append(game_list)
+        else:
+            id_1 = item
+            game_list = ui_models.get_id_list_from_index(id_1)
+            print(len(game_list))
+            result_list.append(game_list)
+
+    result.update(*tuple(result_list))
+
+    
+    print(len(result),"----------")
+    result = result & ui_models.all_set
+    ui_models.filter_set = result
+    print("update filter_set",len(result))
+
+
+
+    

@@ -2,6 +2,7 @@ import os
 import sys
 import zipfile
 import pickle
+import functools
 
 import qtpy
 from qtpy.QtWidgets import *
@@ -12,8 +13,9 @@ import the_files
 import the_variables
 import ui_models
 import extra_database
+import misc_funcs
 
-# 初始化时，设置模拟器路径
+# 初始化时，设置 模拟器路径
 class Dialog_to_choose_emulator_path(QDialog):  
 
     # signal
@@ -105,7 +107,7 @@ class Dialog_to_choose_emulator_path(QDialog):
             print("file_path: ",file_path)
             self.new_line_edit1.setText(file_path[0])
 
-# 菜单中 , 设置周边路径
+# 菜单中 , 设置 周边路径
 class Dialog_to_set_extra_path(QDialog):
     def __init__(self, settings,*args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -306,7 +308,6 @@ class Dialog_to_set_extra_path(QDialog):
             if file_path[0]:
                 line_edit.setText(file_path[0])
 
-
 # 菜单中 , 设置 游戏列表翻译文件 路径
 class Dialog_for_translation_file_path(QDialog):  
 
@@ -384,7 +385,7 @@ class Dialog_for_translation_file_path(QDialog):
             ui_models.load_gamelist_translation_file(translation_file,clear_old_data=True)
 
             # 刷新列表
-            self.parent().centralWidget().new_func_refresh_use_layoutchange()
+            self.parent().centralWidget().new_func_refresh_layoutchange()
 
     def new_func_for_choose_file(self,line_edit,filter_string="lst (*.lst);;所有文件 (*.*)"):
         file_path = QFileDialog.getOpenFileName(
@@ -398,13 +399,747 @@ class Dialog_for_translation_file_path(QDialog):
             if file_path[0]:
                 line_edit.setText(file_path[0])
 
+
+# 菜单中 , 游戏列表 图标大小
+class Dialog_for_set_gamelist_icon_size(QDialog):  
+
+    def __init__(self, settings,*args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.new_settings = settings
+        
+        self.setWindowTitle("游戏列表图标")
+
+        self.setSizeGripEnabled(True)
+        
+        self.setMinimumWidth(400)
+        #self.setMinimumHeight(300)
+
+        # 垂直布局管理器
+        layout = QVBoxLayout()
+
+        # 第一行布局
+        first_row_layout = QHBoxLayout()
+        label_1 = QLabel("图标宽度:")
+        self.new_line_edit1 = QLineEdit()
+        first_row_layout.addWidget(label_1)
+        first_row_layout.addWidget(self.new_line_edit1)
+        layout.addLayout(first_row_layout)
+
+        layout.addWidget(QLabel(""))
+        layout.addWidget(QLabel("注：设置整数,大于0 "))
+
+
+        # 
+        button_ok = QPushButton("确认")
+        button_ok.clicked.connect(self.new_func_for_ok)
+        #button_ok.clicked.connect(self.accept)
+        layout.addWidget(button_ok)
+
+        button_cancel = QPushButton("取消")
+        button_cancel.clicked.connect(self.reject)
+        layout.addWidget(button_cancel)
+
+        self.setLayout(layout)
+
+    def new_func_set_values(self,):
+        settings = self.new_settings
+
+        try:icon_size = settings.value("gamelist/icon_size_for_gamelist",type=int)
+        except:icon_size = 0
+
+        if icon_size is None:
+            icon_size = the_variables.icon_size
+        
+        if icon_size <= 0:
+            icon_size = the_variables.icon_size
+
+        self.new_line_edit1.setText(str(icon_size))
+        
+
+    def new_func_for_ok(self,checked):
+        settings = self.new_settings
+
+        icon_size = self.new_line_edit1.text()
+
+        try:
+            icon_size = int(icon_size)
+        except:
+            QMessageBox.warning(self, "错误", "请输入整数,大于0")
+            return
+        
+        if icon_size == 0:
+            QMessageBox.warning(self, "错误", "请输入整数,大于0")
+            return
+        
+        if icon_size > 0 :
+            
+            try:old_size = settings.value("gamelist/icon_size_for_gamelist",type=int)
+            except:old_size = 0
+
+            if old_size != icon_size:
+
+                # 保存 设置
+                settings.setValue("gamelist/icon_size_for_gamelist",icon_size)
+
+                the_variables.icon_size = icon_size
+                ui_models.load_and_resize_internal_icon()
+
+                self.parent().centralWidget().new_func_refresh_layoutchange()
+
+            self.accept()
+
+# 菜单中 , 游戏列表 行高
+class Dialog_for_set_gamelist_row_height(QDialog):  
+
+    def __init__(self, settings,*args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.new_settings = settings
+        
+        self.setWindowTitle("游戏列表行高")
+
+        self.setSizeGripEnabled(True)
+        
+        self.setMinimumWidth(400)
+        #self.setMinimumHeight(300)
+
+        # 垂直布局管理器
+        layout = QVBoxLayout()
+
+        # 第一行布局
+        first_row_layout = QHBoxLayout()
+        label_1 = QLabel("行高 QTableView:")
+        self.new_line_edit1 = QLineEdit()
+        first_row_layout.addWidget(label_1)
+        first_row_layout.addWidget(self.new_line_edit1)
+        layout.addLayout(first_row_layout)
+
+        # 第二行布局
+        second_row_layout = QHBoxLayout()
+        label_2 = QLabel("行高 QTreeView:")
+        self.new_line_edit2 = QLineEdit()
+        second_row_layout.addWidget(label_2)
+        second_row_layout.addWidget(self.new_line_edit2)
+        layout.addLayout(second_row_layout)        
+
+        layout.addWidget(QLabel(""))
+        layout.addWidget(QLabel("注：设置整数,大于0 "))
+        layout.addWidget(QLabel("注：0 代表默认值 "))
+
+
+        # 
+        button_ok = QPushButton("确认")
+        button_ok.clicked.connect(self.new_func_for_ok)
+        layout.addWidget(button_ok)
+
+        button_cancel = QPushButton("取消")
+        button_cancel.clicked.connect(self.reject)
+        layout.addWidget(button_cancel)
+
+        self.setLayout(layout)
+
+    def new_func_set_values(self,):
+        settings = self.new_settings
+
+        try:height_for_tableview = settings.value("gamelist/row_height_for_tableview",type=int)
+        except:height_for_tableview = 0
+        try:height_for_treeview  = settings.value("gamelist/row_height_for_treeview",type=int)
+        except:height_for_treeview = 0
+
+        if type(height_for_tableview) is not int:
+            height_for_tableview = 0
+        if height_for_tableview < 0:
+            height_for_tableview = 0
+        
+        if type(height_for_treeview) is not int:
+            height_for_treeview = 0
+        if height_for_treeview < 0:
+            height_for_treeview = 0
+
+        self.new_line_edit1.setText(str(height_for_tableview))
+        self.new_line_edit2.setText(str(height_for_treeview))
+    
+    def new_func_for_ok(self,checked):
+        settings = self.new_settings
+
+        height_for_tableview = self.new_line_edit1.text()
+        height_for_treeview = self.new_line_edit2.text()
+
+        try:
+            height_for_tableview = int(height_for_tableview)
+        except:
+            QMessageBox.warning(self, "错误", "请输入整数,大于0")
+            return
+        if height_for_tableview < 0:
+            QMessageBox.warning(self, "错误", "请输入整数,大于0")
+            return
+        
+        try:
+            height_for_treeview = int(height_for_treeview)
+        except:
+            QMessageBox.warning(self, "错误", "请输入整数,大于0")
+            return
+        if height_for_treeview < 0:
+            QMessageBox.warning(self, "错误", "请输入整数,大于0")
+            return
+        
+        changed = False
+
+        try:old_height_for_tableview = settings.value("gamelist/row_height_for_tableview",type=int)
+        except:old_height_for_tableview=0
+        try:old_height_for_treeview  = settings.value("gamelist/row_height_for_treeview",type=int)
+        except:old_height_for_treeview=0
+
+        
+
+        if old_height_for_tableview != height_for_tableview:
+            changed = True
+
+            # 保存 设置
+            settings.setValue("gamelist/row_height_for_tableview",height_for_tableview)
+
+            self.parent().new_func_set_row_height_for_tableview()
+
+
+        if old_height_for_treeview != height_for_treeview:
+            changed = True
+
+            # 保存 设置
+            settings.setValue("gamelist/row_height_for_treeview",height_for_treeview)
+
+            self.parent().new_func_set_internal_qss()
+
+        if changed:
+            self.accept()
+        else:
+            self.hide()
+
+# 菜单中 , 字体
+class Dialog_for_set_font(QDialog):  
+
+    def __init__(self, settings,*args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.new_settings = settings
+        
+        self.setWindowTitle("字体")
+
+        self.setSizeGripEnabled(True)
+        
+        self.setMinimumWidth(400)
+        #self.setMinimumHeight(300)
+
+        # 垂直布局管理器
+        layout = QVBoxLayout()
+
+        self.new_keys =   ["all",    "gamelist",   "extra",     "extra_command","extra_command_english"]
+        self.new_titles = ["所有字体","游戏列表字体","周边文档字体","中文出招表字体","英文出招表字体"]
+        self.new_line_edit_for_font_family_dict = {}
+        self.new_line_edit_for_font_size_dict = {}
+
+        for key,title in zip(self.new_keys,self.new_titles):
+            row_layout = QHBoxLayout()
+
+            row_layout.addWidget(QLabel(title))
+
+            row_layout.addWidget(QLabel("字体:"))
+            self.new_line_edit_for_font_family_dict[key] = QLineEdit()
+            row_layout.addWidget(self.new_line_edit_for_font_family_dict[key])
+
+            row_layout.addWidget(QLabel("大小:"))
+            self.new_line_edit_for_font_size_dict[key] = QLineEdit()
+            row_layout.addWidget(self.new_line_edit_for_font_size_dict[key])
+
+            button = QPushButton("...")
+            row_layout.addWidget(button)
+            button.clicked.connect(functools.partial(self.new_func_for_choose_font, 
+                                                     self.new_line_edit_for_font_family_dict[key],
+                                                     self.new_line_edit_for_font_size_dict[key]))
+
+            layout.addLayout(row_layout)
+
+
+        # 注释
+        layout.addWidget(QLabel(""))
+        layout.addWidget(QLabel("注：删除留空表示使用默认值"))
+        layout.addWidget(QLabel("注：字体大小值为整数,大于0 "))
+
+
+        # 
+        button_ok = QPushButton("确认")
+        button_ok.clicked.connect(self.new_func_for_ok)
+        layout.addWidget(button_ok)
+
+        button_cancel = QPushButton("取消")
+        button_cancel.clicked.connect(self.reject)
+        layout.addWidget(button_cancel)
+
+        button_clear = QPushButton("清空")
+        button_clear.clicked.connect(self.new_func_clear)
+        layout.addWidget(button_clear)
+
+        self.setLayout(layout)
+
+    def new_func_set_values(self,):
+        settings = self.new_settings
+
+        self.new_func_clear()
+
+        for key,title in zip(self.new_keys,self.new_titles):
+            font_family = settings.value(f"font_family/{key}",type=str)
+            try:font_size = settings.value(f"font_size/{key}",type=int)
+            except:font_size = 0
+
+            if font_family:
+                self.new_line_edit_for_font_family_dict[key].setText(font_family)
+            if type(font_size) == int:
+                if font_size > 0:
+                    self.new_line_edit_for_font_size_dict[key].setText(str(font_size))
+
+    def new_func_for_choose_font(self,line_edit_font,line_edit_size):
+        ok,font = QFontDialog.getFont(self)
+        if ok:
+            print(font)
+            font_info = QFontInfo(font)
+            family = font_info.family()
+            size = font_info.pixelSize()
+            line_edit_font.setText(family)
+            line_edit_size.setText(str(size))
+        else:
+            print("用户取消选择")
+
+    def new_func_for_ok(self,checked):
+        settings = self.new_settings
+
+        for key in self.new_keys:
+            
+            # font_family
+            value = self.new_line_edit_for_font_family_dict[key].text()
+            value = value.strip()
+            settings.setValue(f"font_family/{key}",value)
+            
+            # font_size
+            value = self.new_line_edit_for_font_size_dict[key].text()
+            try:
+                int(value)
+            except :
+                value = "" # 清空
+            settings.setValue(f"font_size/{key}",value)
+        
+        # 生成 qss 文件
+        # mainwindow
+        # new_func_set_internal_qss()
+        self.parent().new_func_set_internal_qss()
+
+        self.accept()
+
+    def new_func_clear(self):
+        # 清空所有 QLineEdit
+        for child in self.children():
+            if isinstance(child, QLineEdit):
+                child.setText("")
+
+
+# 菜单中 , 游戏列表 行高
+class Dialog_for_set_gamelist_highlight_row_colour(QDialog):  
+
+    def __init__(self, settings,*args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.new_settings = settings
+        
+        self.setWindowTitle("游戏列表选中行颜色")
+
+        self.setSizeGripEnabled(True)
+        
+        self.setMinimumWidth(600)
+        #self.setMinimumHeight(300)
+
+        self.new_background_r = -1
+        self.new_background_g = -1
+        self.new_background_b = -1
+        self.new_background_a = 255
+
+        self.new_colour_r = -1
+        self.new_colour_g = -1
+        self.new_colour_b = -1
+        self.new_colour_a = 255
+
+        # 垂直布局管理器
+        layout = QVBoxLayout()
+
+
+
+        # 第一行布局
+        first_row_layout = QHBoxLayout()
+        label_1 = QLabel("选中行背景色:")
+        button_1 = QPushButton("选色")
+        
+        self.new_line_edit1 = QLineEdit()
+        self.new_line_edit1.setPlaceholderText("此处可填写透明度 0 - 255")
+
+        self.new_label_colour_1 = QLabel()
+        
+        
+        first_row_layout.addWidget(label_1)
+        first_row_layout.addWidget(button_1)
+        first_row_layout.addWidget(self.new_line_edit1)
+        first_row_layout.addWidget(self.new_label_colour_1)
+        layout.addLayout(first_row_layout)
+
+        self.new_label_colour_1.setMinimumWidth(100)
+
+        # 第二行布局
+        second_row_layout = QHBoxLayout()
+        label_2 = QLabel("选中行文本颜色:")
+        button_2 = QPushButton("选色")
+
+        self.new_line_edit2 = QLineEdit()
+        self.new_line_edit2.setPlaceholderText("此处可填写透明度 0 - 255")
+
+        self.new_label_colour_2 = QLabel()
+
+        second_row_layout.addWidget(label_2)
+        second_row_layout.addWidget(button_2)
+        second_row_layout.addWidget(self.new_line_edit2)
+        second_row_layout.addWidget(self.new_label_colour_2)
+        layout.addLayout(second_row_layout)
+
+        self.new_label_colour_2.setMinimumWidth(100)
+ 
+        self.new_label_colour_test = QLabel()
+        layout.addWidget(self.new_label_colour_test)
+        #self.new_label_colour_test.setMinimumWidth(100)
+        self.new_label_colour_test.setText("测试文本 Test Text")
+
+        button_1.clicked.connect(self.new_func_for_choose_colour_background)
+        button_2.clicked.connect(self.new_func_for_choose_colour_text)
+        self.new_line_edit1.textChanged.connect(self.new_func_for_background_alpha_changed)
+        self.new_line_edit2.textChanged.connect(self.new_func_for_text_alpha_changed)
+
+        # 注释
+        layout.addWidget(QLabel(""))
+        layout.addWidget(QLabel("注：设置整数,范围 0 - 255"))
+        layout.addWidget(QLabel("注：此选项，适用于 Fusion (菜单→UI→style→Fusion),其它 sytle 有可能不管用"))
+
+        # 
+        button_ok = QPushButton("确认")
+        button_ok.clicked.connect(self.new_func_for_ok)
+        layout.addWidget(button_ok)
+
+        button_cancel = QPushButton("取消")
+        button_cancel.clicked.connect(self.reject)
+        layout.addWidget(button_cancel)
+
+
+        button_clear = QPushButton("清除")
+        button_clear.clicked.connect(self.new_func_for_clear)
+        layout.addWidget(button_clear)        
+
+        self.setLayout(layout)
+
+    def new_func_build_qss(self):
+        qss=""
+
+        if self.new_background_r >= 0 and self.new_background_g >= 0 and self.new_background_b >= 0 and self.new_background_a >= 0:
+            if self.new_background_r <= 255 and self.new_background_g <= 255 and self.new_background_b <= 255 and self.new_background_a <= 255:
+                qss += f"background-color: rgba({self.new_background_r},{self.new_background_g},{self.new_background_b},{self.new_background_a});"
+        
+        if self.new_colour_r >= 0 and self.new_colour_g >= 0 and self.new_colour_b >= 0 and self.new_colour_a >= 0:
+            if self.new_colour_r <= 255 and self.new_colour_g <= 255 and self.new_colour_b <= 255 and self.new_colour_a <= 255:
+                qss += f"color: rgba({self.new_colour_r},{self.new_colour_g},{self.new_colour_b},{self.new_colour_a});"
+        
+        return qss
+    
+    def new_func_use_qss(self):
+        qss=self.new_func_build_qss()
+        self.new_label_colour_test.setStyleSheet(qss)
+
+    def new_func_for_choose_colour_background(self,):
+        colour = QColorDialog.getColor()
+        #print(type(colour))
+        #print(colour)
+        if colour.isValid():
+            self.new_background_r = colour.red()
+            self.new_background_g = colour.green()
+            self.new_background_b = colour.blue()
+            
+            self.new_func_use_qss()
+
+    def new_func_for_choose_colour_text(self,):
+        colour = QColorDialog.getColor()
+        #print(type(colour))
+        #print(colour)
+        if colour.isValid():
+            self.new_colour_r = colour.red()
+            self.new_colour_g = colour.green()
+            self.new_colour_b = colour.blue()
+            self.new_colour_a = colour.alpha()
+
+            self.new_func_use_qss()
+
+    @Slot(str)
+    def new_func_for_background_alpha_changed(self,text):
+        try:
+            self.new_background_a = int(text)
+        except:
+            self.new_background_a = 255
+        
+        if self.new_background_a < 0: 
+            self.new_background_a = 255
+        
+        if self.new_background_a > 255:
+            self.new_background_a = 255
+
+        self.new_func_use_qss()
+
+    @Slot(str)
+    def new_func_for_text_alpha_changed(self,text):
+        try:
+            self.new_colour_a = int(text)
+        except:
+            self.new_colour_a = 255
+        
+        if self.new_colour_a < 0: 
+            self.new_colour_a = 255
+        
+        if self.new_colour_a > 255:
+            self.new_colour_a = 255
+
+        self.new_func_use_qss()
+
+
+
+    def new_func_set_values(self,):
+       
+        settings = self.new_settings
+
+        try:
+            background = settings.value("gamelist_highlight/background")
+        except:
+            background = ""
+        if background :
+            try:
+                self.new_background_r = int(background.split(",")[0])
+                self.new_background_g = int(background.split(",")[1])
+                self.new_background_b = int(background.split(",")[2])
+                self.new_background_a = int(background.split(",")[3])
+            except:
+                self.new_background_r = -1
+                self.new_background_g = -1
+                self.new_background_b = -1
+                self.new_background_a = 255
+
+        value_ok=False
+        if self.new_background_r >= 0 and self.new_background_g >= 0 and self.new_background_b >= 0 and self.new_background_a >= 0: 
+            if self.new_background_a <= 255 and self.new_background_r <= 255 and self.new_background_g <= 255 and self.new_background_b <= 255:
+                value_ok=True
+                self.new_line_edit1.setText(str(self.new_background_a))
+        if not value_ok:
+            self.new_background_r = -1
+            self.new_background_g = -1
+            self.new_background_b = -1
+            self.new_background_a = 255
+
+        try:
+            colour = settings.value("gamelist_highlight/colour",)
+        except:
+            colour = ""
+        if colour :
+            try:
+                self.new_colour_r = int(colour.split(",")[0])
+                self.new_colour_g = int(colour.split(",")[1])
+                self.new_colour_b = int(colour.split(",")[2])
+                self.new_colour_a = int(colour.split(",")[3])
+            except:
+                self.new_colour_r = -1
+                self.new_colour_g = -1
+                self.new_colour_b = -1
+                self.new_colour_a = 255
+        value_ok=False
+        if self.new_colour_r >= 0 and self.new_colour_g >= 0 and self.new_colour_b >= 0 and self.new_colour_a >= 0: 
+            if self.new_colour_a <= 255 and self.new_colour_r <= 255 and self.new_colour_g <= 255 and self.new_colour_b <= 255:
+                value_ok=True
+                self.new_line_edit2.setText(str(self.new_colour_a))
+        if not value_ok:
+            self.new_colour_r = -1
+            self.new_colour_g = -1
+            self.new_colour_b = -1
+            self.new_colour_a = 255
+
+        self.new_func_use_qss()
+    
+    def new_func_for_ok(self,checked):
+        settings = self.new_settings
+        
+        backgroud_string = self.new_background_r,self.new_background_g,self.new_background_b,self.new_background_a
+        backgroud_string = ",".join(map(str, backgroud_string))
+        settings.setValue("gamelist_highlight/background",backgroud_string)
+        
+        colour_string = self.new_colour_r,self.new_colour_g,self.new_colour_b,self.new_colour_a
+        colour_string = ",".join(map(str, colour_string))
+        settings.setValue("gamelist_highlight/colour",colour_string)
+
+        self.parent().new_func_set_internal_qss()
+        self.accept()
+
+
+    def new_func_for_clear(self):
+        settings = self.new_settings
+        self.new_background_r,self.new_background_g,self.new_background_b,self.new_background_a = -1,-1,-1,255
+        backgroud_string = self.new_background_r,self.new_background_g,self.new_background_b,self.new_background_a
+        backgroud_string = ",".join(map(str, backgroud_string))
+        settings.setValue("gamelist_highlight/background",backgroud_string)
+        
+        self.new_colour_r,self.new_colour_g,self.new_colour_b,self.new_colour_a = -1,-1,-1,255
+        colour_string = self.new_colour_r,self.new_colour_g,self.new_colour_b,self.new_colour_a
+        colour_string = ",".join(map(str, colour_string))
+        settings.setValue("gamelist_highlight/colour",colour_string)
+
+        self.new_func_use_qss()
+
+
+
+
+
+
+
+
+
+
+# 菜单中 , gamelist 全局过滤
+class Dialog_to_set_gamelist_filter(QDialog):
+    def __init__(self, settings,*args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        self.new_settings = settings
+        
+        self.setWindowTitle("过滤")
+        
+
+        # 创建垂直布局（对话框的主布局）
+        main_layout = QVBoxLayout(self)
+
+        # 1. 创建滚动区域
+        scroll_area = QScrollArea()
+        scroll_area.setWidgetResizable(True)  # 重要：让内容自适应大小
+        scroll_area.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOn) 
+
+        # 2. 创建容器部件
+        container = QWidget()
+
+        # 3. 为容器设置布局
+        layout = QVBoxLayout(container)
+
+
+
+        self.new_checkbox_dict = {}
+
+        # parent_set
+        self.new_checkbox_dict["parent_set"] = QCheckBox("主版本")
+        layout.addWidget(self.new_checkbox_dict["parent_set"])
+
+        # clone_set
+        self.new_checkbox_dict["clone_set"] = QCheckBox("克隆版本")
+        layout.addWidget(self.new_checkbox_dict["clone_set"])
+
+        # bios
+        self.new_checkbox_dict["bios"] = QCheckBox("BIOS")
+        layout.addWidget(self.new_checkbox_dict["bios"])
+
+        # device
+        self.new_checkbox_dict["device"] = QCheckBox("device")
+        layout.addWidget(self.new_checkbox_dict["device"])
+
+        # mechanical
+        self.new_checkbox_dict["mechanical"] = QCheckBox("机械")
+        layout.addWidget(self.new_checkbox_dict["mechanical"])
+
+        # chd
+        self.new_checkbox_dict["chd"] = QCheckBox("CHD")
+        layout.addWidget(self.new_checkbox_dict["chd"])
+
+        # softwarelist
+        self.new_checkbox_dict["softwarelist"] = QCheckBox("softwarelist")
+        layout.addWidget(self.new_checkbox_dict["softwarelist"])
+
+        # status good
+        self.new_checkbox_dict["status good"] = QCheckBox("模拟状态 good")
+        layout.addWidget(self.new_checkbox_dict["status good"])
+
+        # status imperfect
+        self.new_checkbox_dict["status imperfect"] = QCheckBox("模拟状态 imperfect")
+        layout.addWidget(self.new_checkbox_dict["status imperfect"])
+
+        # status preliminary
+        self.new_checkbox_dict["status preliminary"] = QCheckBox("模拟状态 preliminary")
+        layout.addWidget(self.new_checkbox_dict["status preliminary"])
+
+        # 5. 将容器设为滚动区域的内容
+        scroll_area.setWidget(container)
+
+        # 6. 将滚动区域添加到对话框主布局中
+        main_layout.addWidget(scroll_area)
+
+        # 可选：添加一个普通按钮（如“关闭”），位于滚动区域下方
+        ok_btn = QPushButton("确认")
+        ok_btn.clicked.connect(self.new_func_for_ok) 
+        ok_btn.clicked.connect(self.accept)  # 点击关闭对话框
+
+        cancel_btn = QPushButton("取消")
+        cancel_btn.clicked.connect(self.reject)  # 点击关闭对话框
+        
+        main_layout.addWidget(cancel_btn)
+        main_layout.addWidget(ok_btn)
+
+
+    def new_func_set_values(self,):
+        settings = self.new_settings
+
+        checked_items=set()
+
+        value = self.new_settings.value("gamelist/filter")
+        if type(value) == str:
+            value = value.strip()
+            if value:
+                for item in value.split(","):
+                    if item in self.new_checkbox_dict.keys():
+                        checked_items.add(item)
+
+        for item in self.new_checkbox_dict.keys():
+            if item not in checked_items:
+                self.new_checkbox_dict[item].setChecked(False)
+            else:
+                self.new_checkbox_dict[item].setChecked(True)
+
+    def new_func_for_ok(self,):
+        print("func for ok")
+
+        checked_items=set()
+
+        #checkState
+        for item in self.new_checkbox_dict.keys():
+            if self.new_checkbox_dict[item].checkState() == Qt.Checked:
+                checked_items.add(item)
+
+        value = ",".join(sorted(checked_items))
+
+        self.new_settings.setValue("gamelist/filter", value)
+
+        misc_funcs.update_filter_set(self.new_settings)
+
+        self.accept()
+
+
+
+
+
+
+
 # 菜单中，显示 python 版本
 class Dialog_for_show_python_version(QDialog):  
 
     def __init__(self,*args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        self.setWindowTitle("python 版本")
+        self.setWindowTitle("Python 版本")
 
         self.setSizeGripEnabled(True)
         
@@ -417,13 +1152,13 @@ class Dialog_for_show_python_version(QDialog):
         # python
         python_version  = str(sys.version)
         layout.addWidget(QLabel("" ))
-        layout.addWidget(QLabel("python : " + python_version))
+        layout.addWidget(QLabel("Python : " + python_version))
 
         # qtpy
         try:
             version_qtpy = qtpy.__version__
             layout.addWidget(QLabel("" ))
-            layout.addWidget(QLabel("qtpy : "  + str(version_qtpy)))
+            layout.addWidget(QLabel("QtPy : "  + str(version_qtpy)))
         except:
             pass
         
@@ -468,8 +1203,12 @@ class Image_dockwidget(QDockWidget):
         self.new_visible = False
         self.visibilityChanged.connect(self.new_func_for_visibilityChanged)
 
+        self.parent().tabifiedDockWidgetActivated.connect(self.new_slot_for_tabifiedDockWidgetActivated)
+
     @Slot(str)
     def new_slot_for_id_change(self,game_id=""):
+
+        #print("slot for image a:",self.objectName())
 
         #if not self.isVisible(): # 在签标页面 重叠时，不管用
         #    return
@@ -477,18 +1216,20 @@ class Image_dockwidget(QDockWidget):
         if not self.new_visible:
             return
 
-        #print()
-        #print("slot for image :",self.objectName())
+        #print("slot for image b:",self.objectName())
+
         if not game_id:
             return
 
         if game_id != the_variables.current_id:
             return
-    
+        
         if self.new_func_get_image_from_file(game_id):
             self.new_the_old_id = game_id
             return
-    
+
+        #print("slot for image c:",self.objectName())
+
         if self.new_func_get_image_from_zip(game_id):
             self.new_the_old_id = game_id
             return
@@ -628,11 +1369,37 @@ class Image_dockwidget(QDockWidget):
     @Slot(bool)
     def new_func_for_visibilityChanged(self,visible):
         self.new_visible = visible
+
+        #print(self.objectName(),"iamge dock visible :",visible,"*****************************")
         
         # 窗口显示，同步内容
         if visible:
             if self.new_the_old_id != the_variables.current_id:
                 self.new_slot_for_id_change(the_variables.current_id)
+
+    @Slot(QDockWidget)
+    def new_slot_for_tabifiedDockWidgetActivated(self,widget):
+        # 判定 在分组中，被折叠了
+        #print("a",self.objectName())
+        if self.isVisible(): # 这个也是奇怪。 isVisible() ，被折叠了，值还是 True
+            
+            #print("b",self.objectName())
+
+            if not self.new_visible: 
+                # 虽然 测试使用没感觉到问题
+                # 但，这个值 是 另一个 slot 中更新的，怎么确定，不会比这个 slot 更晚执行？
+                
+                #print("c",self.objectName())
+
+                tabified_list = self.parent().tabifiedDockWidgets(self)
+                if tabified_list:
+                    if self.new_zip_opened_file is not None:
+                        self.new_func_close_zip() # 分组中被折叠了，关闭 zip 文件
+                        self.new_func_clear_image() # 清理
+                        self.new_the_old_id=None 
+
+
+
 # extra ，文档，dock widget
 #
 class Text_edit_0(QTextEdit):

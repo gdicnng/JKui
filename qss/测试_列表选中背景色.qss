@@ -1,4 +1,0 @@
-QTreeView,QTableView  {
-    selection-background-color: rgba(0,120,212,100);
-}
-

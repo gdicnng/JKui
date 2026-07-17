@@ -97,11 +97,6 @@ QDockWidget QLabel{
 	background-color:rgba(0,0,0,100);/*  黑 半透明 */
 }
 
-/* 列表选中行背景色 */
-QTreeView,QTableView  {
-    selection-background-color: rgba(0,120,212,140);
-}
-
 /* QTableView::item:focus{background-color:rgba(0,120,212,140);border: none;} */
 
 
@@ -121,3 +116,10 @@ QLineEdit{background-color:rgba(255,255,255,30);}
 
 QStatusBar::item { border-color: transparent;}
 
+/* 滚动条 移动块 最短值*/
+QScrollBar::handle:horizontal {
+     min-width: 50px;
+ }
+QScrollBar::handle:vertical  {
+     min-height: 50px;
+ }

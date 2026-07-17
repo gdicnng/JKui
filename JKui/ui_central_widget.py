@@ -1,4 +1,4 @@
-import io
+import io,re
 
 from qtpy.QtWidgets import *
 from qtpy.QtGui import *
@@ -33,8 +33,6 @@ class TheCentralWidget(QStackedWidget):
         self.addWidget(self.new_ui_gamelist_tableview_2_level)
 
 
-
-
         ####
         # tableview fake 2 level
 
@@ -43,8 +41,9 @@ class TheCentralWidget(QStackedWidget):
         self.new_ui_gamelist_treeview = ui_gamelist_treeview.My_Tree_View(self)
         self.addWidget(self.new_ui_gamelist_treeview)
 
+        self.new_flag_search = False
+        self.new_search_content = None
    
-
     def new_func_show_table(self,the_table):
         old_table = self.currentWidget()
 
@@ -71,17 +70,24 @@ class TheCentralWidget(QStackedWidget):
     def new_func_show_treeview(self,):
         self.new_func_show_table(self.new_ui_gamelist_treeview)
 
-    def new_func_refresh_use_layoutchange(self,):
+    def new_func_refresh_layoutchange(self,):
         widget = self.currentWidget()
         if hasattr(widget,"model"):
             widget.model().layoutAboutToBeChanged.emit() # ? 数据整体结构发生重大变化（如重置所有数据）
+            print("refresh layoutchange")
             widget.model().layoutChanged.emit() # ? 数据整体结构发生重大变化（如重置所有数据）
-            #widget.model().modelReset.emit() # ? 模型被完全重置
-            print("refresh")
     
+    def new_func_refresh_modelReset(self,):
+        widget = self.currentWidget()
+        if hasattr(widget,"model"):
+            #模型被完全重置
+            widget.model().beginResetModel()
+            print("refresh modelReset")
+            widget.model().endResetModel()
+    
+    # 程序关闭时，调用这个函数
     def new_func_for_save_settings(self,):
-        # 程序关闭时，掉用这个函数
-
+        
         settings = self.parentWidget().new_settings
 
         # 保存表格的状态
@@ -99,19 +105,16 @@ class TheCentralWidget(QStackedWidget):
                 settings.setValue(temp_text, header_state)
                 print("table header save data :",object_name,temp_text)
 
-
-
-
         # 保存置顶的表格
         current_widget = self.currentWidget()
         object_name = current_widget.objectName()
         temp_text = "current_table"
         settings.setValue(temp_text, object_name)
 
+    # 程序启动时，用这个函数
+    # 初始化，之后，载入数据后，再用
     def new_func_for_load_settings(self,):
-        # 程序启动时，掉用这个函数
-        # 初始化，之后，载入数据后，再用
-
+        
         settings = self.parentWidget().new_settings
 
         # 加载表格的状态
@@ -158,7 +161,7 @@ class TheCentralWidget(QStackedWidget):
         settings = self.parentWidget().new_settings
         mame_exe_path = settings.value("mame/path") 
         mame_working_directory = settings.value("mame/working_directory") 
-        mame_exe_path, mame_working_directory = misc_funcs.get_mame_path_and_working_directory(mame_exe_path, mame_working_directory)        
+        mame_exe_path, mame_working_directory = misc_funcs.get_abspath_for_mame_and_working_directory(mame_exe_path, mame_working_directory)        
 
         print("working directory : ",mame_working_directory)
         print("mame path         : ",mame_exe_path)
@@ -203,5 +206,64 @@ class TheCentralWidget(QStackedWidget):
     def new_slot_record_game_id(self,game_id,):
         the_variables.current_id = game_id
 
+    # 取消搜索
+    def new_func_cancel_search(self):
+        self.new_func_clear_search_record()
 
+        table = self.currentWidget()
+        table.model().new_func_cancel_search()
+    
+    # 目录切换，需更新游戏列表
+    def new_func_show_by_index(self,id_1,id_2,):
+        # 记录 
+        the_variables.index_id_1 = id_1
+        the_variables.index_id_2 = id_2
 
+        self.new_func_clear_search_record()
+
+        current_table = self.currentWidget()
+        current_table.model().new_func_show_by_index(id_1,id_2)
+
+    # 搜索
+    def new_func_for_search(self,search_string,use_re=False,ignore_case=True,search_columns=tuple(),):
+        # search_string,use_re=False,ignore_case=True,search_columns=tuple(),
+        # 搜索字符串
+        # 是否正则
+        # 是否忽略大小写
+        # 搜索列 范围 tuple
+        
+
+        temp = search_string.strip()
+        if temp:
+            if use_re:
+                try:
+                    re.compile(temp)
+                except:
+                    QMessageBox.warning(self,"warning","正则表达式可能出错")
+                    return
+            
+            self.new_flag_search = True
+            self.new_search_content= search_string,use_re,ignore_case,search_columns
+
+            current_table = self.currentWidget()
+            current_table.model().new_func_show_search_result(search_string,use_re=use_re,ignore_case=ignore_case,search_columns=search_columns)
+
+    def new_func_clear_search_record(self):
+        self.new_flag_search = False
+        self.new_search_content = None
+
+    def new_func_reload_gamelist(self):
+        # 数据变化，更新列表
+        # 比如 选择 过滤项目后
+        if self.new_flag_search:
+            if self.new_search_content is not None:
+                if len(self.new_search_content) == 4:
+                    self.new_func_for_search(*self.new_search_content)
+            else:
+                #QMessageBox.warning(self,"warning","搜索内容可能出错")
+                pass
+            return
+        else:
+            id_1 = the_variables.index_id_1
+            id_2 = the_variables.index_id_2
+            self.new_func_show_by_index(id_1,id_2)

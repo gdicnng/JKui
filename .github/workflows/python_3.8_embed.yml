@@ -1,0 +1,48 @@
+name: python 3.8 embed
+
+#on:
+#  push:
+#    branches: [ main ]          # 触发条件可按需调整
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'JKui/**'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  jobs_1: # build exe 
+    
+    env:
+      file_name: python-3.8.10-embed-win32_PyQt5.7z
+
+    
+    strategy:
+      matrix:
+        os: [ windows-2022,  ]
+    
+    runs-on: ${{ matrix.os }} 
+    
+    defaults:
+      run:
+        shell: cmd
+    
+    steps:
+    - name: checkout
+      uses: actions/checkout@v6
+    
+    - name: run
+      run: |
+        .download_embed_python3.8.bat
+
+    - name: update file
+      env:
+        GH_TOKEN: ${{ github.token }}   # 使用内置 token
+      run: |
+        gh release create latest --prerelease --title "latest" --notes "" || true
+        gh release upload latest "${{ env.file_name }}" --clobber

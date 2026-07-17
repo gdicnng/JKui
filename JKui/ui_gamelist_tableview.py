@@ -37,6 +37,8 @@ class My_Table(QTableView):
         #   没有效果 ？？？
         #   但是小片段代码测试，有效 ？？？
         self.horizontalHeader().setHighlightSections(False)
+        #   列标题，上侧，最后一列，不拉伸
+        self.horizontalHeader().setStretchLastSection(False)
 
         # 行标题，左侧
         #   禁止用户变化行高度
@@ -45,6 +47,7 @@ class My_Table(QTableView):
         self.verticalHeader().setVisible(False)
         #   行高度
         #self.verticalHeader().setDefaultSectionSize(80)
+        #self.verticalHeader().resetDefaultSectionSize()
         self.verticalHeader().setHighlightSections(False)
         
         
@@ -55,11 +58,14 @@ class My_Table(QTableView):
 
         self.setSortingEnabled(True)
 
+        # 可选：启用鼠标跟踪，让鼠标移出时能立即隐藏 ToolTip（但 QToolTip 本身会在移出时隐藏）
+        # self.setMouseTracking(True)
     
     def new_func(self,):
         self.new_table_type = "table_view_1_level"
         self.setObjectName("table_view_1_level")
         self.setModel(ui_models.Model_for_table_view(self))
+        self.model().new_signal_time_for_choose_remember_game.connect(self.new_func_scrollto_to_last_game)
     
     # 右键 菜单
     def contextMenuEvent(self,e):
@@ -78,25 +84,16 @@ class My_Table(QTableView):
     def new_func_do_nothing(self,):
         print("")
         print("do nothing")
-    
-    def currentChanged(self,current, previous): # QModelIndex
-        if previous.isValid():
-            row_previous = previous.row()
-        else:
-            row_previous = None
 
-        if current.isValid():
-            row_current = current.row()
-        else:
-            row_current = None
-
-        if row_current != row_previous:
-            game_id, game_info = self.model().new_func_get_id_and_item_by_index(current)
-            print("row changed: ",row_current, game_id)
+    def selectionChanged(self, selected, deselected):
+        if not selected.isEmpty():
+            #print("selected: ", selected.indexes()[0].row())
+            game_id, game_info= self.model().new_func_get_id_and_item_by_index(selected.indexes()[0])
+            row = selected.indexes()[0].row()
+            print("selectionChanged",row,game_id)
             self.parent().new_signal_for_id_change.emit(game_id)
+        super().selectionChanged(selected, deselected)
     
-        super().currentChanged(current, previous)
-
     def mouseDoubleClickEvent(self, event):
         index=self.indexAt(event.position().toPoint())
 
@@ -124,6 +121,33 @@ class My_Table(QTableView):
         else:
             super().keyPressEvent(event)
 
+    def new_func_scrollto_row_by_game_id(self,game_id):
+        if not game_id:
+            return
+        
+        index = self.model().new_func_get_index_by_game_id(game_id)
+
+        if not index: # 可能返回 None
+            return
+        
+        if index.isValid():
+            self.scrollTo(index,QAbstractItemView.PositionAtCenter)
+            self.setCurrentIndex(index)
+
+    @Slot()
+    def new_func_scrollto_to_last_game(self,):
+        if not the_variables.auto_select_last_game:
+            return
+        if not the_variables.current_id:
+            return
+        
+        #self.new_func_scrollto_row_by_game_id(the_variables.current_id)
+        QTimer.singleShot(0, lambda: self.new_func_scrollto_row_by_game_id(the_variables.current_id))
+        # ai
+        # scrollTo 配合 PositionAtCenter 有时不生效，是一个经典的时序（Timing）问题。这通常发生在视图的布局或数据尚未就绪时，它无法准确计算目标单元格的位置
+        # 即使延迟为0，也能让 scrollTo 在UI就绪后执行
+
+
 
 class My_Table_for_2_level(My_Table):
     def __init__(self,*args,**kwargs ):
@@ -133,6 +157,7 @@ class My_Table_for_2_level(My_Table):
         self.new_table_type = "table_view_2_level"
         self.setObjectName("table_view_2_level")
         self.setModel(ui_models.Model_for_table_view_2_level(self))
+        self.model().new_signal_time_for_choose_remember_game.connect(self.new_func_scrollto_to_last_game)
 
 
 
