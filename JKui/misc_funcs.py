@@ -1,9 +1,10 @@
 import os
 import zipfile
+import re
+import shutil
+import time
 
 import ui_models
-
-
 
 
 def get_abspath_for_mame_and_working_directory(mame_exe_path_old="", mame_working_directory_old=""):
@@ -30,13 +31,61 @@ def get_abspath_for_mame_and_working_directory(mame_exe_path_old="", mame_workin
     
     return mame_exe_path, mame_working_directory
 
-def scan_game_files_only_check_if_file_exists_work(rompath,qsettings,merged=False):
+def get_abspath_for_exe_path_and_working_directory(exe_path_old="", working_directory_old=""):
+    # 用户设定
+
+    # 如果是相对路径，转换
+    # 先转换  working_directory
+    # exe_path 相对于  working_directory 再转换，
+    # 如果 exe_path 为单文件名，检查是否是命令行中的程序
+
+    exe_path = ""
+    working_directory = ""
+
+    # 都是绝对路径
+    if os.path.isabs( exe_path_old ) and os.path.isfile( exe_path_old ):
+        exe_path = exe_path_old
+        working_directory = working_directory_old
+        return exe_path, working_directory
+    
+    # exe 为绝对路径
+    if os.path.isabs( exe_path_old ):
+        exe_path = exe_path_old
+
+        if working_directory_old:
+            working_directory = os.path.abspath( working_directory_old )
+        return exe_path, working_directory
+    
+    # exe 不是绝对路径
+    else:
+        if working_directory_old:
+            working_directory = os.path.abspath( working_directory_old )
+
+        # 相对路径拼接
+        temp_file_path = os.path.join(working_directory_old,exe_path_old) 
+
+        # 不含分隔路径符号
+        # 有可能使用了命令行中的程序
+        if os.path.split(exe_path_old)[0] == "": 
+            
+            if shutil.which(temp_file_path) is None:
+                # 拼接的路径，不可执行
+                
+                # 检查 是否是 命令行中已有程序
+                # 也可能是当前目录下文件名的缩写 比如 mame.exe 缩写为 mame ；这样虽然找不到路径，但可以执行
+                if shutil.which(exe_path_old) is not None:
+                    exe_path = exe_path_old
+                    # 这种不用转换为绝对路径
+                    return exe_path, working_directory
+
+        # 其它情况
+        exe_path = os.path.abspath( temp_file_path ) 
+        return exe_path, working_directory
+
+
+def scan_game_files_only_check_if_file_exists_work(mame_working_directory,rompath,merged=False):
+    #time.sleep(5)
     def get_roms_folder_list(rompath):
-        
-        settings = qsettings
-        mame_path = settings.value("mame/path") 
-        mame_working_directory = settings.value("mame/working_directory") 
-        mame_path, mame_working_directory = get_abspath_for_mame_and_working_directory(mame_path, mame_working_directory)
         
         roms_folder_list = []
         
@@ -129,6 +178,7 @@ def scan_game_files_only_check_if_file_exists_work(rompath,qsettings,merged=Fals
     result = get_files_names_in_rompath(merged,rompath_folder_list)
     print("numbers :",len(result))
     return result
+
 
 # internal_index
 def get_id_list_from_internal_index(id_1,id_2="",):
@@ -231,6 +281,110 @@ def get_id_list_from_external_index_by_source(id_1,id_2=""):
 
     
     return the_id_list #  list 或 set
+# 编辑
+def set_id_list_for_external_index(the_id_list,id_1,id_2=""):
+    if type(the_id_list) is not list:
+        the_id_list = list( the_id_list )
+    
+    the_index = ui_models.external_index
+    
+    # 第一层 "ROOT_FOLDER"
+    def for_level_1(the_id_list,id_1):
+        if id_1 in the_index:
+            the_index[id_1]["ROOT_FOLDER"] = the_id_list
+    
+    # 第二层
+    def for_level_2(the_id_list,id_1,id_2):
+        if id_1 in the_index:
+            the_index[id_1][id_2] = the_id_list
+    
+    if not id_2:
+        for_level_1(the_id_list , id_1)
+    else:
+        for_level_2(the_id_list , id_1 , id_2)
+# 编辑 删一个
+def delect_one_item_from_external_index(game_id,id_1,id_2=""):
+    if not game_id:
+        return
+
+    old_items = get_id_list_from_external_index(id_1,id_2) # 不过滤
+    old_items = set(old_items)
+
+    if game_id in old_items:
+        old_items.remove(game_id)
+
+        old_items = list(old_items)
+
+        set_id_list_for_external_index(old_items,id_1,id_2)
+
+        # 记录
+        ui_models.index_files_be_edited.add(id_1)
+
+        return True
+# 编辑 删
+def delect_items_from_external_index(game_id_set,id_1,id_2=""):
+    if not game_id_set:
+        return
+
+    if isinstance(game_id_set,str):
+        game_id_set = set()
+        game_id_set.add(game_id_set)
+
+    if not isinstance(game_id_set,set):
+        game_id_set = set(game_id_set)
+
+    old_items = get_id_list_from_external_index(id_1,id_2) # 不过滤
+    old_items = set(old_items)
+    old_len = len(old_items)
+
+    old_items -= game_id_set
+
+    new_len = len(old_items)
+
+    if new_len != old_len:
+
+        old_items = list(old_items)
+
+        set_id_list_for_external_index(old_items,id_1,id_2)
+
+        # 记录
+        ui_models.index_files_be_edited.add(id_1)
+
+        return True
+# 编辑 添加
+def add_items_to_external_index(game_id_set,id_1,id_2=""): # set
+    if not game_id_set:
+        return
+
+    if isinstance(game_id_set,str):
+        game_id_set = set()
+        game_id_set.add(game_id_set)
+
+    if not isinstance(game_id_set,set):
+        game_id_set = set(game_id_set)
+
+    old_items = get_id_list_from_external_index(id_1,id_2) # 不过滤
+    old_items = set(old_items)
+    old_len = len(old_items)
+
+    old_items.update(game_id_set) # 添加
+
+    new_len = len(old_items)
+
+    if new_len != old_len:
+        old_items = list(old_items)
+
+        set_id_list_for_external_index(old_items,id_1,id_2)
+
+        # 记录
+        ui_models.index_files_be_edited.add(id_1)
+
+        return True
+
+
+# 外部目录，列出，范围以外的 项目
+
+
 
 def load_icons_from_zip(icon_zip_path,all_set=set()):
     # 读取所有文件，二进制数据
@@ -289,6 +443,7 @@ def load_icons_from_zip(icon_zip_path,all_set=set()):
 
     return result
 
+
 def update_filter_set(qsettings):
 
     settings = qsettings
@@ -328,6 +483,3 @@ def update_filter_set(qsettings):
     ui_models.filter_set = result
     print("update filter_set",len(result))
 
-
-
-    

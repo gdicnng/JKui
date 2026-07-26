@@ -99,7 +99,7 @@ class Dialog_to_choose_emulator_path(QDialog):
             self,
             "选择一个可执行文件",
             "",  # 默认起始目录，空表示当前目录或上次使用的目录
-            "可执行文件 (*.exe *.bat *.cmd *.com);;所有文件 (*.*)"  # Windows 常用可执行文件
+            "可执行文件 (*.exe );;所有文件 (*.*)"  # Windows 常用可执行文件
             # 对于 macOS 可以改为 "应用程序 (*.app);;所有文件 (*)"
             # 对于 Linux 可以改为 "可执行文件 (*);;所有文件 (*)"
             )
@@ -400,6 +400,118 @@ class Dialog_for_translation_file_path(QDialog):
                 line_edit.setText(file_path[0])
 
 
+# 菜单中 , 设置 游戏列表翻译文件 路径
+class Dialog_for_save_translation_file(QDialog):  
+
+    def __init__(self, settings,*args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.new_settings = settings
+        
+        self.setWindowTitle("游戏列表翻译文件保存")
+
+        self.setSizeGripEnabled(True)
+        
+        self.setMinimumWidth(500)
+        #self.setMinimumHeight(300)
+
+        # 垂直布局管理器
+        layout = QVBoxLayout()
+
+        ## 第一行布局
+        first_row_layout = QHBoxLayout()
+        label_1 = QLabel("翻译文件路径：")
+        self.new_line_edit1 = QLineEdit()
+        self.new_line_edit1.setReadOnly(True)
+        #button1 = QPushButton("...")
+        #button1.clicked.connect(lambda:self.new_func_for_choose_file(self.new_line_edit1))
+        first_row_layout.addWidget(label_1)
+        first_row_layout.addWidget(self.new_line_edit1)
+        #first_row_layout.addWidget(button1)
+        layout.addLayout(first_row_layout)
+
+
+        ## 第二行布局
+        second_row_layout = QHBoxLayout()
+        label_2 = QLabel("翻译文件编辑后的保存路径：")
+        self.new_line_edit2 = QLineEdit()
+        #button2 = QPushButton("...")
+        #button2.clicked.connect(lambda:self.new_func_for_choose_file(self.new_line_edit2))
+        second_row_layout.addWidget(label_2)
+        second_row_layout.addWidget(self.new_line_edit2)
+        #second_row_layout.addWidget(button2)
+        layout.addLayout(second_row_layout)
+
+
+        layout.addWidget(QLabel("注：保存的翻译文件，字符编码为 utf-8 带 bom"))
+
+
+        last_row_layout = QHBoxLayout()
+        # 添加一个按钮以演示如何关闭对话框（可选）
+        button_ok = QPushButton("保存")
+        button_ok.clicked.connect(self.new_func_for_ok)
+        #button_ok.clicked.connect(self.accept)
+        last_row_layout.addWidget(button_ok)
+
+        button_cancel = QPushButton("取消")
+        button_cancel.clicked.connect(self.reject)
+        last_row_layout.addWidget(button_cancel)
+
+        layout.addLayout(last_row_layout)
+        self.setLayout(layout)
+
+    def new_func_set_values(self,):
+        settings = self.new_settings
+
+        translation_file = settings.value("mame/translation_file",)
+        if translation_file:
+            self.new_line_edit1.setText(translation_file)
+        else:
+            self.new_line_edit1.clear()
+
+        edit_translation_file = settings.value("mame/edit_translation_file",)
+        if edit_translation_file:
+            self.new_line_edit2.setText(edit_translation_file)
+        else:
+            self.new_line_edit2.clear()
+
+    def new_func_for_ok(self,checked):
+        settings = self.new_settings
+
+        edit_translation_file = self.new_line_edit2.text()
+        if not edit_translation_file:
+            QMessageBox.warning(self, "错误", "请输入翻译文件编辑后的保存路径")
+            return
+        
+        if edit_translation_file :
+            print("edit_translation_file: ",edit_translation_file)
+
+            # 保存 设置
+            settings.setValue("mame/edit_translation_file",edit_translation_file)
+
+            # 保存文件
+            f=None
+            try:
+                f=open(edit_translation_file,"w",encoding="utf_8_sig")
+            except:
+                QMessageBox.warning(self, "错误", "无法打开文件写入内容")
+                f=None
+                return
+
+            try:
+                if f is not None:
+                    index_translation = ui_models.columns.index("translation")
+                    index_description = ui_models.columns.index("description")
+                    for game_id in ui_models.machine_dict:
+                        translation = ui_models.machine_dict[game_id][index_translation]
+                        description = ui_models.machine_dict[game_id][index_description]
+                        if description != translation:
+                            translation = translation.replace("\t"," ")
+                            f.write(f"{game_id}\t{translation}\t{translation}\n")
+                    self.accept()
+            except:
+                print("write file error")
+
+
 # 菜单中 , 游戏列表 图标大小
 class Dialog_for_set_gamelist_icon_size(QDialog):  
 
@@ -630,8 +742,8 @@ class Dialog_for_set_font(QDialog):
         # 垂直布局管理器
         layout = QVBoxLayout()
 
-        self.new_keys =   ["all",    "gamelist",   "extra",     "extra_command","extra_command_english"]
-        self.new_titles = ["所有字体","游戏列表字体","周边文档字体","中文出招表字体","英文出招表字体"]
+        self.new_keys =   ["all",    "gamelist",   "extra",     "extra_command","extra_command_english","QHeaderView"  ]
+        self.new_titles = ["所有字体","游戏列表字体","周边文档字体","中文出招表字体","英文出招表字体",        "列表标题栏字体"]
         self.new_line_edit_for_font_family_dict = {}
         self.new_line_edit_for_font_size_dict = {}
 
@@ -641,7 +753,7 @@ class Dialog_for_set_font(QDialog):
             row_layout.addWidget(QLabel(title))
 
             row_layout.addWidget(QLabel("字体:"))
-            self.new_line_edit_for_font_family_dict[key] = QLineEdit()
+            self.new_line_edit_for_font_family_dict[key] = QLineEdit(self)
             row_layout.addWidget(self.new_line_edit_for_font_family_dict[key])
 
             row_layout.addWidget(QLabel("大小:"))
@@ -737,7 +849,6 @@ class Dialog_for_set_font(QDialog):
             if isinstance(child, QLineEdit):
                 child.setText("")
 
-
 # 菜单中 , 游戏列表 行高
 class Dialog_for_set_gamelist_highlight_row_colour(QDialog):  
 
@@ -749,7 +860,7 @@ class Dialog_for_set_gamelist_highlight_row_colour(QDialog):
 
         self.setSizeGripEnabled(True)
         
-        self.setMinimumWidth(600)
+        #self.setMinimumWidth(600)
         #self.setMinimumHeight(300)
 
         self.new_background_r = -1
@@ -765,50 +876,50 @@ class Dialog_for_set_gamelist_highlight_row_colour(QDialog):
         # 垂直布局管理器
         layout = QVBoxLayout()
 
-
-
         # 第一行布局
         first_row_layout = QHBoxLayout()
+        #
         label_1 = QLabel("选中行背景色:")
+        #
         button_1 = QPushButton("选色")
-        
+        #
+        label_transparent_1 = QLabel("透明度:")
+        #
         self.new_line_edit1 = QLineEdit()
         self.new_line_edit1.setPlaceholderText("此处可填写透明度 0 - 255")
-
-        self.new_label_colour_1 = QLabel()
-        
-        
+        #
         first_row_layout.addWidget(label_1)
         first_row_layout.addWidget(button_1)
+        first_row_layout.addWidget(label_transparent_1)
         first_row_layout.addWidget(self.new_line_edit1)
-        first_row_layout.addWidget(self.new_label_colour_1)
         layout.addLayout(first_row_layout)
 
-        self.new_label_colour_1.setMinimumWidth(100)
+
 
         # 第二行布局
         second_row_layout = QHBoxLayout()
+        #
         label_2 = QLabel("选中行文本颜色:")
+        #
         button_2 = QPushButton("选色")
-
+        #
+        label_transparent_2 = QLabel("透明度:")
+        #
         self.new_line_edit2 = QLineEdit()
         self.new_line_edit2.setPlaceholderText("此处可填写透明度 0 - 255")
-
-        self.new_label_colour_2 = QLabel()
-
+        #
         second_row_layout.addWidget(label_2)
         second_row_layout.addWidget(button_2)
+        second_row_layout.addWidget(label_transparent_2)
         second_row_layout.addWidget(self.new_line_edit2)
-        second_row_layout.addWidget(self.new_label_colour_2)
         layout.addLayout(second_row_layout)
 
-        self.new_label_colour_2.setMinimumWidth(100)
- 
+        # 第三行 测试文本
         self.new_label_colour_test = QLabel()
         layout.addWidget(self.new_label_colour_test)
-        #self.new_label_colour_test.setMinimumWidth(100)
         self.new_label_colour_test.setText("测试文本 Test Text")
 
+        ###
         button_1.clicked.connect(self.new_func_for_choose_colour_background)
         button_2.clicked.connect(self.new_func_for_choose_colour_text)
         self.new_line_edit1.textChanged.connect(self.new_func_for_background_alpha_changed)
@@ -816,8 +927,8 @@ class Dialog_for_set_gamelist_highlight_row_colour(QDialog):
 
         # 注释
         layout.addWidget(QLabel(""))
-        layout.addWidget(QLabel("注：设置整数,范围 0 - 255"))
-        layout.addWidget(QLabel("注：此选项，适用于 Fusion (菜单→UI→style→Fusion),其它 sytle 有可能不管用"))
+        layout.addWidget(QLabel("注：透明度，设置整数,范围 0 - 255。0 为全透明，255 为不透明。"))
+        layout.addWidget(QLabel("注：此选项，适用于 Fusion (菜单→UI→style→Fusion),其它 sytle 有可能不管用。"))
 
         # 
         button_ok = QPushButton("确认")
@@ -996,11 +1107,118 @@ class Dialog_for_set_gamelist_highlight_row_colour(QDialog):
         self.new_func_use_qss()
 
 
+# 菜单中 , 字体，游戏列表 2 level tree like ，设置打开关闭字符串
+class Dialog_for_set_open_colse_string_for_tableview_2_level_tree_like(QDialog):  
+
+    def __init__(self, settings,*args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.new_settings = settings
+        
+        self.setWindowTitle("列表展开收起字符设置")
+
+        self.setSizeGripEnabled(True)
+        
+        self.setMinimumWidth(400)
+        #self.setMinimumHeight(300)
+
+        # 垂直布局管理器
+        layout = QVBoxLayout()
+
+        self.new_keys           = ["string_for_open",    "string_for_close",   "string_for_empty",   ]
+        self.new_titles         = ["展开字符串",          "收起字符串",          "空字符串"]
+        self.new_default_values = [" + ",                " - ",                "   "]
+
+        self.new_line_edit_dict = {}
+
+        for key,title in zip(self.new_keys,self.new_titles):
+            row_layout = QHBoxLayout()
+
+            row_layout.addWidget(QLabel(title))
+            
+            self.new_line_edit_dict[key] = QLineEdit(self)
+            row_layout.addWidget(self.new_line_edit_dict[key])
+
+            layout.addLayout(row_layout)
 
 
+        # 注释
+        layout.addWidget(QLabel(""))
+        layout.addWidget(QLabel("注：可以有部分空白字符"))
+        layout.addWidget(QLabel("注：字符串前后如果有空白，用英文双引号括起来"))
+        layout.addWidget(QLabel("注：字符串显示宽度相等最好"))
+        
 
 
+        # 
+        button_ok = QPushButton("确认")
+        button_ok.clicked.connect(self.new_func_for_ok)
+        layout.addWidget(button_ok)
 
+        button_cancel = QPushButton("取消")
+        button_cancel.clicked.connect(self.reject)
+        layout.addWidget(button_cancel)
+
+        button_reset = QPushButton("重置")
+        button_reset.clicked.connect(self.new_func_reset)
+        layout.addWidget(button_reset)
+
+        self.setLayout(layout)
+
+    def new_func_set_values(self,):
+        settings = self.new_settings
+
+        self.new_func_clear()
+
+        for key,default_value in zip(self.new_keys,self.new_default_values):
+
+            try:
+                string = settings.value(f"gamelist_faketree/{key}",type=str)
+            except:
+                string = default_value
+            
+            if not string:
+                string = default_value
+
+            if string:
+                string = string.strip('"')
+                string = '"' + string + '"'
+                self.new_line_edit_dict[key].setText(string)
+
+    def new_func_for_ok(self,checked):
+        settings = self.new_settings
+
+        for key,default_value in zip(self.new_keys,self.new_default_values):
+            
+            # font_family
+            value = self.new_line_edit_dict[key].text()
+
+            value = value.strip()
+            value = value.strip('"')
+
+            if not value:
+                value = default_value
+
+            setattr(ui_models,key,value) # 内部数据修改
+
+            value = '"' + value + '"'
+            
+            settings.setValue(f"gamelist_faketree/{key}",value) # 外部数据保存
+
+            
+        
+        self.accept()
+
+    def new_func_reset(self):
+        # 清空所有 QLineEdit
+        for key,value in zip(self.new_keys,self.new_default_values):
+            valute = '"' + value + '"'
+            self.new_line_edit_dict[key].setText(value)
+    
+    def new_func_clear(self):
+        # 清空所有 QLineEdit
+        for child in self.children():
+            if isinstance(child, QLineEdit):
+                child.setText("")
 
 
 
@@ -1128,11 +1346,6 @@ class Dialog_to_set_gamelist_filter(QDialog):
         self.accept()
 
 
-
-
-
-
-
 # 菜单中，显示 python 版本
 class Dialog_for_show_python_version(QDialog):  
 
@@ -1172,6 +1385,8 @@ class Dialog_for_show_python_version(QDialog):
 
 
         self.setLayout(layout)
+
+
 
 
 # extra , image， dock widget
@@ -1710,7 +1925,7 @@ class Text_dockwidget_2(QDockWidget):
         super().closeEvent(event)
     
     def new_func_for_combo_box_change(self,index):
-        print("combo box change:",index)
+        #print("combo box change:",index)
         if index == 0:
             self.new_textedit.clear()
             for keys in sorted(self.new_content_remember):
@@ -1806,6 +2021,329 @@ class Text_dockwidget_for_command_english(Text_dockwidget_2):
         if pickle_content:
             content = pickle.loads(pickle_content)
             return content
+#
+# 显示 命令行 查询结果
+# 也用 上面的 Text_edit_0
+class Dialog_for_show_command_line_result_of_mame(QDialog):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.setWindowTitle("命令行查询结果")
+        self.setWindowFlags(self.windowFlags() | Qt.WindowType.WindowMaximizeButtonHint) # 最大化按钮
+
+        self.setSizeGripEnabled(True)
+        
+        self.setMinimumWidth(500)
+        self.setMinimumHeight(400)
+
+        # 垂直布局管理器
+        layout = QVBoxLayout()
+
+        self.new_textedit = Text_edit_0(self)
+        self.new_textedit.setReadOnly(True)
+        #layout.addWidget(self.new_textedit,)
+        layout.addWidget(self.new_textedit,stretch=1)
+
+        buttor_ok = QPushButton("确定", self)
+        buttor_ok.clicked.connect(self.accept)
+        layout.addWidget(buttor_ok)
+
+        self.setLayout(layout)
+
+    def new_func_set_text(self,text):
+        self.new_textedit.setPlainText(text)
+
+
+class TableWidget_0(QTableWidget):
+    new_signal_for_press_return = Signal(int,int)       # row,column
+    new_signal_for_press_return_ctrl = Signal(int,int)  # row,column
+    new_signal_for_double_click = Signal(int,int)      # row,column
+    new_signal_for_double_click_ctrl = Signal(int,int) # row,column
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+     
+        self.setEditTriggers(QAbstractItemView.NoEditTriggers)
+
+        # 水平滚动条，按像素滚动，
+        #   而不是 按完整列 滚动
+        self.setHorizontalScrollMode(QAbstractItemView.ScrollPerPixel)
+        
+        # 不换行
+        self.setWordWrap(False)
+        
+        # 选择一行，
+        #   而不是选择 单元格
+        self.setSelectionBehavior(QAbstractItemView.SelectRows)
+        
+        # 单选、多选
+        self.setSelectionMode(QAbstractItemView.SingleSelection )
+
+        # 列标题，上侧
+        #   点击 标题
+        #self.horizontalHeader().setSectionsClickable(True)
+        #   拖动
+        #self.horizontalHeader().setSectionsMovable(True)
+        #   第一列，禁止拖动
+        self.horizontalHeader().setFirstSectionMovable(False)
+        #   关闭列标题高亮，阻止选中时字体加粗
+        #   没有效果 ？？？
+        #   但是小片段代码测试，有效 ？？？
+        self.horizontalHeader().setHighlightSections(False)
+        #   列标题，上侧，最后一列，不拉伸
+        self.horizontalHeader().setStretchLastSection(False)
+
+        # 行标题，左侧
+        #   禁止用户变化行高度
+        self.verticalHeader().setSectionResizeMode(QHeaderView.Fixed) 
+        #   不显示，行标题
+        self.verticalHeader().setVisible(False)
+        #   行高度
+        #self.verticalHeader().setDefaultSectionSize(80)
+        #self.verticalHeader().resetDefaultSectionSize()
+        self.verticalHeader().setHighlightSections(False)
+        
+        
+        # 不显示 单元格
+        self.setShowGrid(False)
+
+        self.setTabKeyNavigation(False)
+
+        self.setSortingEnabled(False)
+        #
+                
+    def mouseDoubleClickEvent(self, event):
+        index=self.indexAt(event.position().toPoint())
+        
+        if index.isValid():
+            if event.button() == Qt.LeftButton:
+                row = self.currentRow()
+                column = self.currentColumn()
+
+                if event.modifiers() & Qt.ControlModifier:
+                    self.new_signal_for_double_click_ctrl.emit(row,column)
+                else:
+                    self.new_signal_for_double_click.emit(row,column)
+
+                self.setCurrentIndex(index)
+        super().mouseDoubleClickEvent(event)
+
+    def keyPressEvent(self, event):
+        print(event.key(),event.text())
+        selected_indexes = self.selectionModel().selectedIndexes()
+        if selected_indexes:
+            index = selected_indexes[0]
+            row = index.row()
+            column = index.column()
+
+            if event.key() == Qt.Key_Return:
+                if event.modifiers() & Qt.ControlModifier:
+                    print("Ctrl + Return")
+                    self.new_signal_for_press_return_ctrl.emit(row,column)
+                else:
+                    print("Return")
+                    self.new_signal_for_press_return.emit(row,column)
+        super().keyPressEvent(event)
+#
+# gamelist 右键菜单 弹出窗口, bios 选择器
+class Dialog_for_show_bios_selector(QDialog):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.setWindowTitle("BIOS选择器")
+
+        self.new_bios_list = []
+        self.new_width = 0
+        self.new_height = 0
+        self.new_game_id = ""
+
+        self.setWindowFlags(self.windowFlags() | Qt.WindowType.WindowMaximizeButtonHint) # 最大化按钮
+        self.setSizeGripEnabled(True)
+        
+        self.setMinimumWidth(500)
+        self.setMinimumHeight(400)
+
+        # 垂直布局管理器
+        layout = QVBoxLayout()
+
+        self.new_table = TableWidget_0(self)
+
+        self.new_table.new_signal_for_double_click.connect(self.new_slot_for_start_mame)
+        self.new_table.new_signal_for_press_return.connect(self.new_slot_for_start_mame)
+        self.new_table.new_signal_for_double_click_ctrl.connect(self.new_slot_for_start_mame_detached)
+        self.new_table.new_signal_for_press_return_ctrl.connect(self.new_slot_for_start_mame_detached)
+
+        self.new_table.setColumnCount(2)
+        self.new_table.setHorizontalHeaderLabels(["BIOS名称","BIOS描述"])
+        self.new_table.setColumnWidth(0,200)
+        self.new_table.setColumnWidth(1,300)
+
+        
+        layout.addWidget(self.new_table,stretch=1)
+
+        #buttor_ok = QPushButton("确定", self)
+        #buttor_ok.clicked.connect(self.accept)
+        #layout.addWidget(buttor_ok)
+
+        self.setLayout(layout)
+
+    def new_func_set_values(self,game_id,bios_list):
+        # bios_list
+        #   [[bios_name,bios_description],[bios_name_2,bios_description_2],...]
+        self.new_table.clearContents()
+        self.new_bios_list = bios_list
+        self.new_game_id = game_id
+
+
+        if not bios_list:
+            self.setWindowTitle(f"BIOS选择器 - {game_id} - 没有 BIOS")
+            self.new_table.setRowCount(len(bios_list))
+            return
+        else:
+            self.setWindowTitle(f"BIOS选择器 - {game_id}")
+            self.new_table.setRowCount(len(bios_list))
+            for n in range(len(bios_list)):
+                self.new_table.setItem(n,0,QTableWidgetItem(bios_list[n][0]))
+                self.new_table.setItem(n,1,QTableWidgetItem(bios_list[n][1]))
+        
+    def hideEvent(self, event):
+        self.new_width = self.width()  
+        self.new_height = self.height()  
+        super().hideEvent(event)
+
+    def showEvent(self, event):
+        if self.new_width  and self.new_height:
+            self.resize(self.new_width,self.new_height)
+        super().showEvent(event)
+    
+    @Slot(int,int)
+    def new_slot_for_start_mame(self,row,column):
+
+        print(row,column)
+        print(self.new_bios_list[row])
+        bios_name = self.new_bios_list[row][0]
+        if self.new_game_id:
+            self.parentWidget().new_func_start_emulator(self.new_game_id,other_command_list=["-bios",bios_name])
+            self.accept()
+
+    @Slot(int,int)
+    def new_slot_for_start_mame_detached(self,row,column):
+        print(row,column)
+        print(self.new_bios_list[row])
+        bios_name = self.new_bios_list[row][0]
+        if self.new_game_id:
+            self.parentWidget().new_func_start_emulator(self.new_game_id,hide=False,other_command_list=["-bios",bios_name])
+            self.accept()
+#
+# F1 ，用户自定义运行方式，选择器
+class Dialog_for_show_script_selector(QDialog):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        self.setWindowTitle("选择自定义运行方式")
+
+        self.new_script_list = []
+        self.new_width = 0
+        self.new_height = 0
+        self.new_game_id = ""
+
+        self.setWindowFlags(self.windowFlags() | Qt.WindowType.WindowMaximizeButtonHint) # 最大化按钮
+        self.setSizeGripEnabled(True)
+        
+        self.setMinimumWidth(300)
+        self.setMinimumHeight(400)
+
+        # 垂直布局管理器
+        layout = QVBoxLayout()
+
+        self.new_table = TableWidget_0(self)
+        self.new_table.horizontalHeader().setStretchLastSection(True)
+
+        self.new_table.new_signal_for_double_click.connect(self.new_slot_for_start_mame)
+        self.new_table.new_signal_for_press_return.connect(self.new_slot_for_start_mame)
+        self.new_table.new_signal_for_double_click_ctrl.connect(self.new_slot_for_start_mame_detached)
+        self.new_table.new_signal_for_press_return_ctrl.connect(self.new_slot_for_start_mame_detached)
+
+        self.new_table.setColumnCount(1)
+        self.new_table.setHorizontalHeaderLabels( ["所在文件夹："+the_files.script_folder] )
+        #self.new_table.setColumnWidth(0,400)
+        #self.new_table.setColumnWidth(1,300)
+
+        
+        layout.addWidget(self.new_table,stretch=1)
+
+        #buttor_ok = QPushButton("确定", self)
+        #buttor_ok.clicked.connect(self.accept)
+        #layout.addWidget(buttor_ok)
+
+        self.setLayout(layout)
+
+    def new_func_set_values(self,game_id):
+        # script_list
+
+        self.new_table.clearContents()
+
+        self.new_script_list = []
+        self.new_game_id = game_id
+
+        def get_text_file_list(folder): # 仅搜一层目录
+            file_list = []
+            
+            if not os.path.isdir(folder):
+                return file_list
+                        
+            (dirpath, dirnames, filenames) = next( os.walk(folder) )
+            for file_name in filenames:
+                if file_name.lower().endswith(".txt"):
+                    file_list.append( file_name )
+            return file_list
+
+        file_list = get_text_file_list(the_files.script_folder)
+        
+        self.new_script_list = file_list
+
+        if not file_list:
+            self.setWindowTitle("选择自定义运行方式" + " - " + game_id + " - 还没添加自定义运行方式")
+            return
+        else:
+            self.setWindowTitle("选择自定义运行方式" + " - " + game_id)
+
+            self.new_table.setRowCount(len(file_list))
+            for n in range(len(file_list)):
+                self.new_table.setItem(n,0,QTableWidgetItem(file_list[n]))
+ 
+        
+    def hideEvent(self, event):
+        self.new_width = self.width()  
+        self.new_height = self.height()  
+        super().hideEvent(event)
+
+    def showEvent(self, event):
+        if self.new_width  and self.new_height:
+            self.resize(self.new_width,self.new_height)
+        super().showEvent(event)
+    
+    @Slot(int,int)
+    def new_slot_for_start_mame(self,row,column):
+
+        print(row,column)
+        print(self.new_script_list[row])
+        script_name = self.new_script_list[row]
+        if self.new_game_id:
+            self.parentWidget().new_func_start_process_by_script(self.new_game_id,script_name,hide=True)
+            self.accept()
+
+    @Slot(int,int)
+    def new_slot_for_start_mame_detached(self,row,column):
+        print(row,column)
+        print(self.new_script_list[row])
+        script_name = self.new_script_list[row]
+        if self.new_game_id:
+            self.parentWidget().new_func_start_process_by_script(self.new_game_id,script_name,hide=False)   
+            self.accept()
+#
+
+
+
+
+
 
 
 # toolbar ,search 

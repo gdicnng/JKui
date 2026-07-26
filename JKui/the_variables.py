@@ -1,3 +1,6 @@
+
+# 很多 ui_models.py 中需要频烦使用变量，直接放在 ui_models.py 中，更方便一点
+
 software_name = "JKui"
 
 user_settings = None # 记录 用户配置文件 ，QSettings
@@ -24,6 +27,14 @@ sort_use_locale = False
 
 index_id_1 = ""
 index_id_2 = ""
+
+## 目录编辑 移到 ui_models.py 中吧
+#editable_index_files = set()
+#index_files_be_edited = set()
+#index_edit_mode = False
+## 多选
+#multi_selection_mode = False
+
 
 # 游戏列表 列标题 翻译
 columns_translation = {

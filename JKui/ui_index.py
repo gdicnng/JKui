@@ -5,6 +5,8 @@ from qtpy.QtGui import *
 from qtpy.QtCore import *
 
 import ui_models
+import misc_funcs
+
 
 class My_index_table(QTreeView):
     new_signal_change_index = Signal(str,str)
@@ -20,27 +22,26 @@ class My_index_table(QTreeView):
         self.setHeaderHidden(True)
 
         self.new_func()
+        self.new_func_create_context_menu()
 
-    
     def new_func(self):
         model_for_index = ui_models.Model_for_index()
         self.setModel( model_for_index )
         self.setObjectName("index_table")
-        
-    def contextMenuEvent(self,e):
-        context = QMenu(self)
-        
-        action=QAction("test 1", self)
-        action.triggered.connect(self.new_func_do_nothing)
-        context.addAction(action)
-        
-        action=QAction("test 2", self)
-        action.triggered.connect(self.new_func_do_nothing)
-        context.addAction(action)
 
-        context.exec_(e.globalPos())
+    def new_func_create_context_menu(self,):
+        self.new_context_menu = QMenu(self)
+        
+        action_collapse_all=QAction("折叠所有项", self)
+        action_collapse_all.triggered.connect(self.collapseAll)
+        self.new_context_menu.addAction(action_collapse_all)
     
 
+    def contextMenuEvent(self,e):
+        index=self.indexAt(e.pos())
+        if index.isValid():
+            self.new_context_menu.exec(e.globalPos())
+    
     def new_func_do_nothing(self,):
         print("")
         print("do nothing")
@@ -192,3 +193,131 @@ class Index_dockwidget(QDockWidget):
     def new_slot_for_receive_index_id(self,index_id_1,index_id_2):
 
         self.new_index_id_remember = index_id_1,index_id_2
+
+
+# 目录选择器
+class Treeview_for_index_chooser(QTreeView):
+
+    def __init__(self,*args,**kwargs):
+        super().__init__(*args,**kwargs)
+        
+        self.setUniformRowHeights(True)
+
+        self.setHorizontalScrollMode(QAbstractItemView.ScrollPerPixel)
+        self.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
+
+        self.header().setStretchLastSection(False)
+
+        self.setHeaderHidden(False)
+        #self.setColumnWidth(0,200) # 不管用？
+        #self.setColumnWidth(1,300)
+
+        self.new_func()
+        self.new_func_create_context_menu()
+    
+    def new_func(self):
+        model_for_index_chooser = ui_models.Model_for_index_chooser()
+        self.setModel( model_for_index_chooser )
+        self.setObjectName("editable_index_chooser")
+
+    def new_func_create_context_menu(self,):
+        self.new_context_menu = QMenu(self)
+        
+        action_collapse_all=QAction("折叠所有项", self)
+        action_collapse_all.triggered.connect(self.collapseAll)
+        self.new_context_menu.addAction(action_collapse_all)
+
+    def contextMenuEvent(self,e):
+        index=self.indexAt(e.pos())
+        if index.isValid():
+            self.new_context_menu.exec(e.globalPos())
+    
+class Dialog_for_index_chooser(QDialog):  
+
+    def __init__(self,*args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        self.new_add_mode = True
+        self.new_game_id_set = set()
+        self.new_index_id_1 = ""
+        self.new_index_id_2 = ""
+        
+        self.new_title_string = "目录选择"
+        
+        self.setWindowTitle(self.new_title_string)
+
+        self.setSizeGripEnabled(True)
+        
+        self.setMinimumWidth(500)
+        #self.setMinimumHeight(300)
+
+        # 垂直布局管理器
+        layout = QVBoxLayout()
+        
+        # 第一行布局
+        tree_for_index_chooser = Treeview_for_index_chooser(self)
+        layout.addWidget(tree_for_index_chooser, 1)
+        self.new_tree = tree_for_index_chooser
+
+        # 第二行
+        last_row_layout = QHBoxLayout()
+        button_ok = QPushButton("确认")
+        button_ok.clicked.connect(self.new_func_for_ok)
+        last_row_layout.addWidget(button_ok)
+
+        button_cancel = QPushButton("取消")
+        button_cancel.clicked.connect(self.reject)
+        last_row_layout.addWidget(button_cancel)
+
+        layout.addLayout(last_row_layout)
+        self.setLayout(layout)
+
+    def new_func_set_values(self,game_id_s,add_mode=True):
+        if not game_id_s:
+            return
+        
+        self.new_add_mode = add_mode
+
+        self.new_game_id_set.clear()
+        self.new_index_id_1 = ""
+        self.new_index_id_2 = ""
+
+        self.new_tree.resizeColumnToContents(0)
+        self.new_tree.resizeColumnToContents(1)
+        
+        if isinstance(game_id_s,str):
+            self.new_game_id_set.add(game_id_s) # 单个 game_id
+        else:
+            self.new_game_id_set.update(game_id_s) # 多个 game_id 可迭代对象
+
+        if add_mode:
+            self.setWindowTitle(self.new_title_string + " + " + str(len(self.new_game_id_set)))
+        else:
+            self.setWindowTitle(self.new_title_string + " - " + str(len(self.new_game_id_set)))
+
+    def new_func_get_index_id(self):
+        return self.new_index_id_1,self.new_index_id_2
+
+    def new_func_for_ok(self,checked):
+        tree = self.new_tree
+        current_index = tree.currentIndex()
+        if current_index.isValid():
+            selected_index_list = tree.selectionModel().selectedIndexes()
+            if current_index in selected_index_list:
+                index_id_1 ,index_id_2 = tree.model().new_func_get_index_id_by_index(current_index)
+                
+                print()
+                print("index_id_1",index_id_1)
+                print("index_id_2",index_id_2)
+                if self.new_add_mode:
+                    changed = misc_funcs.add_items_to_external_index(self.new_game_id_set,index_id_1,index_id_2)
+                else:
+                    changed = misc_funcs.delect_items_from_external_index(self.new_game_id_set,index_id_1,index_id_2)
+
+
+                if changed:
+                    self.new_index_id_1,self.new_index_id_2 = index_id_1,index_id_2 # 记录
+                    self.accept()
+                else:
+                    self.reject()
+

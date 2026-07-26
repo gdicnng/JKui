@@ -1,0 +1,117 @@
+﻿以前写过 JJui ，编号加一位，简单取名 JKui 。
+使用 QT （ Python 版 QT ）重写一下，感觉可能会好看一点。
+都是 QT ，表面看起来和 MxUI 、 M+GUI 很像了。
+
+未完成，半成品状态。
+感兴趣的可以提前测试一下。
+
+JKui 网址：
+  https://github.com/gdicnng/JKui
+  https://github.com/gdicnng/JKui/releases
+
+MAME 官方网址：
+  https://www.mamedev.org/
+  JKui 不是一个独立的程序，是 MAME 的前端，配合 MAME 使用，从 MAME 中读取数据，显示 MAME 的游戏列表，方便选择游戏。
+
+exe 的兼容性：
+  python 在新操作系统上打包 生成的 EXE ，不能在旧的操作系统上运行。当前在 github action 上使用的系统版本：Windows2022,OS Version: 10.0.20348 Build 5256 。
+
+低版本操作系统：
+  添加了 python-3.8.10-embed-win32_PyQt5.7z 。
+  免安装版本 python ，不打包 exe 版本，解压缩以后，双击 run_Jkui.bat 文件，运行。
+  不打包成 exe ,用低版本 python ，应该可以在 win7 上运行。
+  不过我写代码的时候用的新的，这个有可能会遇到更多的问题，如有遇问题的话，可以告诉我。
+
+运行的时候，菜单中选： 【 UI 】 → 【 style 】 → 【 Fusion 】 。我也选这个，选其它的，视觉效果可能略有差异。
+
+背景图片的话：
+  背景图片在下层，文字在上层；中间层设为透明或半透明，可以看到背景图片；
+  半透明如果能调整的好一些，能让文字显示得更清晰一些，我调的两个 qss 效果，放在了 qss 文件夹里。
+  如果本身是 白底黑字，可以选择 【 UI 】 → 【 qss 】 → 测试背景图片2 ；
+  如果本身是 黑底白字，可以选择 【 UI 】 → 【 qss 】 → 测试背景图片1  。
+  可以替换 qss 文件夹 中对应的图片，不过简单替换，不调整其它选项，可能视觉效果不佳。
+
+周边文档：
+  需要手动点一下载入，读取到数据库后，才能显示。菜单中 【 周边 】 → 【 重新加载周边文档 】。
+  中文出招表字体，建议选择等宽字体，而且是那种 两个英文字符的宽度 正好 等于  一个中文字符的宽度，这样文本排列会显示得更整齐一些，比如 宋体、楷体 等，可以自己测试，。
+
+周边图片：
+  建议使用 zip 压缩包格式的，毕竟下载下来的资源都是 zip 压缩包格式的。
+  如果设置的 图片的 文件夹 路径，这个会优先使用。
+  不使用 文件夹 里的图片，建议 把 设置里的 图片的 文件夹路径 删除清空，因为每次切换图片，都会优先检测文件夹中的图片文件是否存在。
+
+一些周边网址：
+  图片：
+    图片资源： https://www.progettosnaps.net/snapshots/
+    图标资源： https://www.progettosnaps.net/icons/
+  文档：
+    command.dat 中文出招表：
+      https://bbs.xqemu.cn/forum.php?mod=viewthread&tid=2147
+      https://bbs.xqemu.cn/forum.php?mod=viewthread&tid=12488
+    history.dat 中文历史文档。很久以前的一个中文历史文档，可以下载一个老版本的 MamePlus ，在语言包里找一找。
+    history.xml 英文历史：https://www.arcade-history.com/
+    command.dat 英文出招表：https://www.progettosnaps.net/index.php
+    gameinit.dat 英文文档：https://www.progettosnaps.net/index.php
+      一些游戏初始化比较麻烦，这个文档主要记录这种的。
+    mameinfo.dat 英文文档：https://mameinfo.mameworld.info/ 
+    messinfo.dat 英文文档：https://www.progettosnaps.net/messinfo
+  第三方目录：
+    https://www.progettosnaps.net/index.php
+    https://mameinfo.mameworld.info/
+    https://www.arcade-history.com
+    ……
+
+自定义运行方式
+  快捷键：
+    F1 ，打开 自定义运行方式选择器
+    
+    F2 - F12:
+      F2  或 Alt + 2,打开  2.txt ;如果 Ctrl + 2 ，不隐藏 UI
+      F3  或 Alt + 3,打开  3.txt ;如果 Ctrl + 3 ，不隐藏 UI
+      …… …… …… …… …… …… …… …… …… ……
+      …… …… …… …… …… …… …… …… …… ……
+      …… …… …… …… …… …… …… …… …… ……
+      F9  或 Alt + 9,打开  9.txt ;如果 Ctrl + 9 ，不隐藏 UI
+      F10 或 Alt + 0,打开 10.txt ;如果 Ctrl + 0 ，不隐藏 UI
+      F11 ,打开 11.txt
+      F12,,打开 12.txt
+    
+    也可以使用其它名称，按 F1 键，弹出选择窗口，再选
+    
+    快捷键 和 JJui （ https://github.com/gdicnng/JJui ）有一些不同。
+  参数设置
+    参数设置方式，和以前 JJui （ https://github.com/gdicnng/JJui ） 差不多一样的。
+    未添加以 source 分类的的 运行方式
+
+表格 QTableView ，平铺列表。
+  单层列表
+  伪双层列表 ，不可收缩
+  伪双层树状列表，可以点击展开、收缩。（原生的树状列表 QTreeView ，初始化有点慢，补充了这个列表）
+  游戏列表，以上三个用了 QTableView。
+表格 QTreeView ，树状列表，可展开收缩。
+  感觉初始化需要时间，尤其列表数量多的话，切换列表明显要慢一些。
+  目录用的这个。
+  游戏列表，其中的一个，也用的这个，考虑要不要删掉它。
+
+用 QTableView 做的，双层可展开列表，展开、收起的符号用的字符串（用字符串简单一点），可以自己修改。
+  + - 
+  十一 
+  ＋－
+  2BC8 ⯈，2BC6 ⯆，25BD ▽
+  23F5⏵，23F7 ⏷
+  25B6 ▶（这个字符默认字体显示样式比较奇怪）， ，25BC ▼，▽ 25BD，
+  1F782 🞂 1F783 🞃 （这两字符 qt5 好像保存不了）
+  2795 ➕，2796 ➖，这两字符，我这里，默认字体带颜色，紫色的
+
+多选，勾选
+  该功能，用于配合 目录 的 编辑功能使用，方便编辑 自定义目录。
+   1. 菜单,目录，启用编辑功能。
+   2. 菜单，游戏列表，启用多选（勾选）功能。
+   注意：切换游戏列表时，已经勾选的项目，本身没有取消。
+     鼠标点击点击勾选方框：可以 选择/取消选择 单个项目
+     Ctrl + A ：（之前会清空选项）勾选当前表格所有项
+     Alt  + A ：清空所有勾选项
+     Ctrl + X ：（之前会清空选项）对当前表格所有项目，反转 勾选状态
+     Ctrl + 鼠标点击：（此时不要点击在方框上）点击的行，反转 勾选状态
+     Ctrl + 鼠标点击按住不放，拖动：移动范围，反转 勾选状态；感觉拖动快的话，可能会漏选
+     选中一行，然后 Shift + 鼠标点击另一行：前一次选中的行 与 后一次点击的行，两者之间，反转 勾选状态

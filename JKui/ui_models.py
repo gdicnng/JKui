@@ -57,8 +57,6 @@ external_index_by_source = dict()
 # 之后，合并以上几类目录
 index_chainmap = collections.ChainMap()
 #######################################
-bool_translation_column_editable = False  # 翻译列是否可编辑
-bool_gamelist_table_multi_selection = False  # 游戏列表表格是否支持多选行,用勾选代替多选，原生的多选比较卡
 
 ##
 icon_column_index = -1
@@ -69,7 +67,7 @@ romof_column_index = -1 # 状态栏信息用
 status_column_index = -1 # 状态栏信息用
 savestate_column_index = -1 # 状态栏信息用
 sourcefile_column_index = -1 # 周边，mameinfo.dat 、messinfo.dat 用
-parent_have_more_than_1_clone_set = set() # parent_id set
+parent_have_more_than_1_clone_set = set() # parent_id set ，有多个子项的父项，# 好像没用上
 #parent_to_clone__keys_set = set() 
 
 # 图标
@@ -81,6 +79,7 @@ icon_black_pixmap = None
 icon_not_have_pixmap = None
 
 icon_extra_resource = dict()
+# 第三方图标，全部读取到此
 
 # new_table_type 
 # 变量记录在 model 里 , new_table_type
@@ -91,8 +90,21 @@ icon_extra_resource = dict()
 # "tree_view", 双层列表，树状列表,QTreeView
 
 
-the_index_info = None  # 记录 目录名称
-the_index_content = [] # 记录 目录内容
+# 表格中用于 展开/收起 符号
+string_for_open = " + " 
+string_for_close = " - "
+string_for_empty = "   "
+
+# 目录编辑 
+editable_index_files = set()
+index_files_be_edited = set()
+index_edit_mode = False
+# 多选模式（勾选）
+multi_selection_mode = False
+the_selected_items = set() # 多选， 记录
+# 列表编辑 仅翻译列
+gamelist_editable_mode = False
+
 
 def the_timer(func):
     @functools.wraps(func)
@@ -281,6 +293,10 @@ index_has_children = dict()
 index_list_backup = []
 index_has_children_backup = dict()
 
+# 可编辑目录 选择器
+editable_index_list=[]
+editable_index_has_children = dict()
+
 def rebuild_index(top_index_list=None):
     # 第一层 index_list : 
     #   主目录 id
@@ -362,6 +378,35 @@ def rebuild_index(top_index_list=None):
 
     index_list_backup = index_list
     index_has_children_backup = index_has_children
+
+def build_editable_index_data():
+   # 第一层 index_list : 
+    #   主目录 id
+    # 第二层 index_has_children
+    #   主目录 id : 子目录 id 列表
+
+    global editable_index_list
+    global editable_index_has_children
+    # external_index
+    # editable_index_files
+
+    editable_index_list.clear()
+    editable_index_has_children.clear()
+
+    # 第一层 内置
+    for index_id in sorted( external_index.keys() ): # 内置固定优先排序
+        if index_id in ( editable_index_files ):
+            editable_index_list.append(index_id)
+
+    # 第二层
+    for parent_index_id in editable_index_list:
+        if parent_index_id in external_index.keys():
+            parent_item = external_index[parent_index_id]
+
+            the_keys = set( parent_item.keys() )
+            the_other_keys = the_keys - {"FOLDER_SETTINGS","ROOT_FOLDER"}
+            if the_other_keys :
+                editable_index_has_children[parent_index_id] = sorted( the_other_keys )
 
 
 ####################
@@ -658,8 +703,40 @@ def get_icon_for_gamelist_table_fake_2_level(game_id):
     return new_icon
 
 
+def get_sort_func(column=None,reverse=None):# return function or None
+        # 未指定值，则，读取默认值
+        if column is None:
+            column = the_variables.sort_column
+        if reverse is None:
+            reverse = the_variables.sort_reverse
 
+        if type(column) is not int:
+            column = 0
+        
+        if column < 0 or column >= len(columns):
+            column = 0
+        
+        if type(reverse) is not bool:
+            reverse = False
+        
+        # sort key func
+        def sort_key_func_1(game_id):
+            return locale.strxfrm(machine_dict[game_id][column])
+        def sort_key_func_2(game_id):
+            return machine_dict[game_id][column]
+        #
+        sort_key_func = sort_key_func_2
+        if the_variables.sort_use_locale:
+            if column in the_variables.sort_colums_use_locale:
+                sort_key_func = sort_key_func_1
+        if column == id_column_index:
+            sort_key_func = None
 
+        return sort_key_func 
+
+#########################
+#########################
+#########################
 class Model_for_table_view(QAbstractTableModel):
     
     singalGamelistNumberChanged = Signal(int)
@@ -671,6 +748,9 @@ class Model_for_table_view(QAbstractTableModel):
             # new_func_show_by_index()
             # new_func_show_search_result()
     
+    new_signal_need_reload_gamelist = Signal()
+
+
     def __init__(self,*args,**kwargs):
         super().__init__(*args,**kwargs)
 
@@ -684,11 +764,24 @@ class Model_for_table_view(QAbstractTableModel):
         self.new_search_flag = False
 
     def data(self, index, role=Qt.DisplayRole):
+        if not index.isValid():
+            return None
+
         if role == Qt.DisplayRole:
             return machine_dict[ self.new_game_list_to_show[index.row()] ] [ index.column() ]
         elif role == Qt.DecorationRole:
             if index.column() == 0:
                 return get_icon_for_gamelist_table( self.new_game_list_to_show[index.row()] )
+        elif role == Qt.EditRole:
+            return self.data(index, Qt.DisplayRole)
+        elif role ==Qt.CheckStateRole:
+            if multi_selection_mode:
+                if index.column()==0:
+                    game_id = self.new_game_list_to_show[index.row()]
+                    if game_id in the_selected_items:
+                        return Qt.Checked
+                    else:
+                        return Qt.Unchecked
 
     def headerData(self,section,orientation,role=Qt.DisplayRole):
         if role == Qt.DisplayRole:
@@ -706,12 +799,66 @@ class Model_for_table_view(QAbstractTableModel):
         # 相同长度
         return len(columns)
 
+    #编辑 flags()
+    def flags(self, index: QModelIndex) -> Qt.ItemFlags:
+        if not index.isValid():
+            return Qt.NoItemFlags
+        
+        if index.column()==0:
+            if multi_selection_mode:
+                return super().flags(index) | Qt.ItemIsUserCheckable 
+        elif index.column() == translation_column_index:
+            if gamelist_editable_mode:
+                return super().flags(index) | Qt.ItemIsEditable
+
+        #return super().flags(index) & ( ~ Qt.ItemIsEditable ) & ( ~ Qt.ItemIsUserCheckable )
+        return super().flags(index)
+    
+    #编辑 setData()
+    def setData(self, index, value, role=Qt.EditRole):
+        
+        if index.isValid():
+            
+            if role == Qt.EditRole:
+                if index.column() == translation_column_index:
+                    game_id, game_info = self.new_func_get_id_and_item_by_index(index)
+                    game_info[translation_column_index] = value
+                    #machine_dict[game_id] = game_info
+                    self.dataChanged.emit(index, index, [role] )
+                    return True
+        
+            #Qt::Unchecked	0	The item is unchecked.
+            #Qt::PartiallyChecked	1	The item is partially checked. Items in hierarchical models may be partially checked if some, but not all, of their children are checked.
+            #Qt::Checked	2	The item is checked.
+            elif role == Qt.CheckStateRole:
+                if index.column() ==0:
+                    game_id, game_info = self.new_func_get_id_and_item_by_index(index)
+                    if value==2:
+                        the_selected_items.add(game_id)
+                    elif value == 0:
+                        the_selected_items.discard(game_id)
+                    self.dataChanged.emit(index, index, [role])
+                    return True
+        
+        return False
+
     def new_func_get_id_and_item_by_index(self, index):
         row = index.row()
         game_id = self.new_game_list_to_show[row]
         return game_id, machine_dict[ game_id ] 
 
-    def new_func_get_index_by_game_id(self,game_id):
+    def new_func_get_item_id_by_index(self, index):
+        row = index.row()
+        game_id = self.new_game_list_to_show[row]
+        return game_id
+
+    def new_func_get_item_id_by_row(self, row):
+        game_id = ""
+        if (row >= 0) and (row < len(self.new_game_list_to_show)):
+            game_id = self.new_game_list_to_show[row]
+        return game_id
+
+    def new_func_get_index_by_game_id(self,game_id,column=0):
         result = QModelIndex()
 
         if not game_id:
@@ -725,8 +872,7 @@ class Model_for_table_view(QAbstractTableModel):
         except:
             return result
         
-        return self.index(row,0)
-
+        return self.index(row,column)
 
     # 鼠标点击排序
     def sort(self,column, order = Qt.AscendingOrder):
@@ -761,29 +907,12 @@ class Model_for_table_view(QAbstractTableModel):
     
     @the_timer
     def new_func_for_sort(self,column=None,reverse=None):
-        
-        # 未指定值，则，读取默认值
-        if column is None:
-            column = the_variables.sort_column
         if reverse is None:
             reverse = the_variables.sort_reverse
-        if column < 0 or column >= len(columns):
-            column = 0
-        if type(reverse) is not bool:
-            reverse = False
-
-        def sort_key_func_1(game_id):
-            return locale.strxfrm(machine_dict[game_id][column])
-        def sort_key_func_2(game_id):
-            return machine_dict[game_id][column]
+        if column is None:
+            column = the_variables.sort_column
         
-        sort_key_func = sort_key_func_2
-        if the_variables.sort_use_locale:
-            if column in the_variables.sort_colums_use_locale:
-                sort_key_func = sort_key_func_1
-        if column == id_column_index:
-            sort_key_func = None
-            print("sort by id")
+        sort_key_func = get_sort_func(column,reverse)
         
         if isinstance(self.new_game_list_to_show,list):
             self.new_game_list_to_show.sort( key = sort_key_func,reverse = reverse, )
@@ -809,15 +938,19 @@ class Model_for_table_view(QAbstractTableModel):
         self.new_func_clear_all_data()
 
         # 取值
-        self.new_game_list_to_show = list( get_id_list_from_index_and_filter(id_1,id_2) )
-        #   生成新的 list ，避免原 list 被修改
-
-        # 数量信号
-        game_list_number = len(self.new_game_list_to_show)
-        self.singalGamelistNumberChanged.emit(game_list_number)
+        self.new_game_list_to_show = get_id_list_from_index_and_filter(id_1,id_2) # set
+        #   取值,未过滤时，都是 传地址地来的。 set or list
+        #   经过 过滤后，用 all_set 过滤，再减去用户设定的过滤项，传地址过来的，只有可能会剩下 all_set （过滤项为空时） 。 set
+        #   在下面 排序时，注意不要修改
+        #   这里得到的都是 set 类型，需要的是 list , 正好也不容易被修改
 
         # 排序
         self.new_func_for_sort()
+
+        # 数量信号
+        self.new_func_numbers_changed()
+
+
 
         ###
         self.endResetModel()
@@ -848,8 +981,7 @@ class Model_for_table_view(QAbstractTableModel):
         self.new_func_for_sort()
 
         # 数量信号
-        game_list_number = len(self.new_game_list_to_show)
-        self.singalGamelistNumberChanged.emit(game_list_number)
+        self.new_func_numbers_changed()
 
         # 排序
         self.new_func_for_sort()
@@ -859,6 +991,63 @@ class Model_for_table_view(QAbstractTableModel):
         # 发送信号
         self.new_signal_time_for_choose_remember_game.emit()
 
+    # 删除一个游戏，从表格菜单中选择删除
+    def new_func_remove_one_item_by_index(self,index):
+        if not index_edit_mode:
+            return
+
+        id_1,id_2 = self.new_remember_index_id_1,self.new_remember_index_id_2
+        if not id_1:
+            return
+        if id_1 not in editable_index_files:
+            return
+
+        if index.isValid():
+
+            row = index.row()
+
+            game_id = self.new_game_list_to_show[ row ]
+
+            # 当前列表，删除
+            self.beginRemoveRows(QModelIndex(),row,row)
+            del self.new_game_list_to_show[ row : row+1 ]
+            self.endRemoveRows()
+
+            # 目录文件，删除
+            misc_funcs.delect_one_item_from_external_index(game_id,id_1,id_2)
+
+            self.new_func_numbers_changed()
+
+    # 多选删除，当前列表中，删除勾选的游戏
+    def new_func_remove_selected_items(self):
+        # 未修改当前列表的数据
+        # 修改外面的数据，完成后，列表需要重载
+        # centeral_widget new_func_reload_gamelist()
+
+        
+        if not index_edit_mode:
+            return
+        
+        if not multi_selection_mode:
+            return
+
+        print(len(the_selected_items))
+        if not the_selected_items: # 空
+            return
+        print("aaa")
+        id_1,id_2 = self.new_remember_index_id_1,self.new_remember_index_id_2
+        print("aaaa",id_1,id_2)
+
+        if not id_1:
+            return
+        
+        if id_1 not in editable_index_files:
+            return
+
+        print("xxxx",id_1,id_2)
+        misc_funcs.delect_items_from_external_index(the_selected_items,id_1,id_2)
+
+        self.new_signal_need_reload_gamelist.emit()
 
     def new_func_clear_all_data(self):
         print("clear data")
@@ -876,10 +1065,54 @@ class Model_for_table_view(QAbstractTableModel):
         id_1,id_2 = self.new_remember_index_id_1,self.new_remember_index_id_2
         self.new_func_show_by_index(id_1,id_2)
 
+    def new_func_numbers_changed(self):
+        game_list_number = len(self.new_game_list_to_show)
+        self.singalGamelistNumberChanged.emit(game_list_number)
+
+    def new_func_select_all_items(self):
+        if not multi_selection_mode:
+            return
+
+        global the_selected_items
+        the_selected_items = set(self.new_game_list_to_show)
+        print(len(the_selected_items))
+
+        if self.new_game_list_to_show:
+            index_first = self.index(0,0)
+            index_last  = self.index(len(self.new_game_list_to_show)-1,0)
+            self.dataChanged.emit(index_first, index_last, [Qt.CheckStateRole])
+
+    def new_func_deselect_all_items(self):
+        if not multi_selection_mode:
+            return
+        
+        the_selected_items.clear()
+        print(len(the_selected_items))
+
+        if self.new_game_list_to_show:
+            index_first = self.index(0,0)
+            index_last  = self.index(len(self.new_game_list_to_show)-1,0)
+            self.dataChanged.emit(index_first, index_last, [Qt.CheckStateRole])        
+
+    def new_func_select_reverse(self):
+        if not multi_selection_mode:
+            return
+
+        global the_selected_items
+        the_selected_items = set(self.new_game_list_to_show) - the_selected_items
+        print(len(the_selected_items))
+      
+        if self.new_game_list_to_show:            
+            index_first = self.index(0,0)
+            index_last  = self.index(len(self.new_game_list_to_show)-1,0)
+            self.dataChanged.emit(index_first, index_last, [Qt.CheckStateRole])            
+
 class Model_for_table_view_2_level(QAbstractTableModel):
     
     singalGamelistNumberChanged = Signal(int)
     new_signal_time_for_choose_remember_game = Signal() # 发信号，后续看是否需要定位到上次选中的游戏
+    new_signal_need_reload_gamelist = Signal() 
+
 
     def __init__(self,*args,**kwargs):
         super().__init__(*args,**kwargs)
@@ -901,6 +1134,9 @@ class Model_for_table_view_2_level(QAbstractTableModel):
         self.new_search_flag = False
         
     def data(self, index, role=Qt.DisplayRole):
+        if not index.isValid():
+            return None
+        
         if role == Qt.DisplayRole:
             return machine_dict[ self.new_game_list_to_show[index.row()] ] [ index.column() ]
         elif role == Qt.DecorationRole:
@@ -910,6 +1146,16 @@ class Model_for_table_view_2_level(QAbstractTableModel):
                     return get_icon_for_gamelist_table_fake_2_level(game_id)
                 else:
                     return get_icon_for_gamelist_table(game_id)
+        elif role == Qt.EditRole:
+            return self.data(index, Qt.DisplayRole)
+        elif role ==Qt.CheckStateRole:
+            if multi_selection_mode:
+                if index.column()==0:
+                    game_id = self.new_game_list_to_show[index.row()]
+                    if game_id in the_selected_items:
+                        return Qt.Checked
+                    else:
+                        return Qt.Unchecked
 
     def headerData(self,section,orientation,role=Qt.DisplayRole):
         if role == Qt.DisplayRole:
@@ -927,10 +1173,64 @@ class Model_for_table_view_2_level(QAbstractTableModel):
         # 相同长度
         return len(columns)
 
+    #编辑 flags()
+    def flags(self, index: QModelIndex) -> Qt.ItemFlags:
+        if not index.isValid():
+            return Qt.NoItemFlags
+        
+        if index.column()==0:
+            if multi_selection_mode:
+                return super().flags(index) | Qt.ItemIsUserCheckable 
+        elif index.column() == translation_column_index:
+            if gamelist_editable_mode:
+                return super().flags(index) | Qt.ItemIsEditable
+
+        #return super().flags(index) & ( ~ Qt.ItemIsEditable ) & ( ~ Qt.ItemIsUserCheckable )
+        return super().flags(index)
+    
+    #编辑 setData()
+    def setData(self, index, value, role=Qt.EditRole):
+        
+        if index.isValid():
+            
+            if role == Qt.EditRole:
+                if index.column() == translation_column_index:
+                    game_id, game_info = self.new_func_get_id_and_item_by_index(index)
+                    game_info[translation_column_index] = value
+                    #machine_dict[game_id] = game_info
+                    self.dataChanged.emit(index, index, [role] )
+                    return True
+        
+            #Qt::Unchecked	0	The item is unchecked.
+            #Qt::PartiallyChecked	1	The item is partially checked. Items in hierarchical models may be partially checked if some, but not all, of their children are checked.
+            #Qt::Checked	2	The item is checked.
+            elif role == Qt.CheckStateRole:
+                if index.column() ==0:
+                    game_id, game_info = self.new_func_get_id_and_item_by_index(index)
+                    if value==2:
+                        the_selected_items.add(game_id)
+                    elif value == 0:
+                        the_selected_items.discard(game_id)
+                    self.dataChanged.emit(index, index, [role])
+                    return True
+        
+        return False
+
     def new_func_get_id_and_item_by_index(self, index):
         row = index.row()
         game_id = self.new_game_list_to_show[row]
         return game_id, machine_dict[ game_id ] 
+
+    def new_func_get_item_id_by_index(self, index):
+        row = index.row()
+        game_id = self.new_game_list_to_show[row]
+        return game_id 
+
+    def new_func_get_item_id_by_row(self, row):
+        game_id = ""
+        if (row >= 0) and (row < len(self.new_game_list_to_show)):
+            game_id = self.new_game_list_to_show[row]
+        return game_id
 
     # 鼠标点击排序
     def sort(self,column, order = Qt.AscendingOrder):
@@ -1033,38 +1333,15 @@ class Model_for_table_view_2_level(QAbstractTableModel):
         if ( not self.new_parent_set) and ( not self.new_clone_set):
             self.new_game_list_to_show = []
             return
-        
-        # 未指定值，则，读取默认值
-        if column is None:
-            column = the_variables.sort_column
+
         if reverse is None:
             reverse = the_variables.sort_reverse
-        if column < 0 or column >= len(columns):
-            column = 0
-        if type(reverse) is not bool:
-            reverse = False
+        if column is None:
+            column = the_variables.sort_column
         
-        # sort key func
-        def sort_key_func_1(game_id):
-            return locale.strxfrm(machine_dict[game_id][column])
-        def sort_key_func_2(game_id):
-            return machine_dict[game_id][column]
-        #
-        sort_key_func = sort_key_func_2
-        if the_variables.sort_use_locale:
-            if column in the_variables.sort_colums_use_locale:
-                sort_key_func = sort_key_func_1
-        if column == id_column_index:
-            sort_key_func = None
-            #print("sort by id")
+        sort_key_func = get_sort_func(column,reverse)
 
-    
-        if not self.new_parent_set:
-            game_list_for_levle_1 = list( self.new_clone_not_have_parent )
-        elif not self.new_clone_not_have_parent:
-            game_list_for_levle_1 = list( self.new_parent_set )
-        else:
-            game_list_for_levle_1 = list( self.new_parent_set | self.new_clone_not_have_parent )
+        game_list_for_levle_1 = list( self.new_parent_set | self.new_clone_not_have_parent )
 
         # 第一层排序
         game_list_for_levle_1.sort(key = sort_key_func ,reverse = reverse, )
@@ -1104,7 +1381,7 @@ class Model_for_table_view_2_level(QAbstractTableModel):
         self.new_func_sort_part_1( get_id_list_from_index_and_filter(id_1,id_2) )
         self.new_func_sort_part_2()
 
-        self.singalGamelistNumberChanged.emit(  len(self.new_game_list_to_show)  )
+        self.new_func_numbers_changed()
 
         ###
         self.endResetModel()
@@ -1136,7 +1413,7 @@ class Model_for_table_view_2_level(QAbstractTableModel):
         self.new_func_sort_part_1(temp_game_ids)
         self.new_func_sort_part_2()
 
-        self.singalGamelistNumberChanged.emit( len(self.new_game_list_to_show) )
+        self.new_func_numbers_changed()
 
         ###
         #self.layoutChanged.emit()
@@ -1188,9 +1465,691 @@ class Model_for_table_view_2_level(QAbstractTableModel):
         id_1,id_2 = self.new_remember_index_id_1,self.new_remember_index_id_2
         self.new_func_show_by_index(id_1,id_2)
 
+    # 删除一个游戏，从表格菜单中选择删除
+    #  可编辑的 自定义目录，通常都比较小。
+    #  这样，删除后，直接重置列表，代码简点，对于小列表来说，也挺快。
+    def new_func_remove_one_item_by_index(self,index):
+        if not index_edit_mode:
+            return
+
+        id_1,id_2 = self.new_remember_index_id_1,self.new_remember_index_id_2
+        if not id_1:
+            return
+        if id_1 not in editable_index_files:
+            return
+
+        if index.isValid():
+
+            row = index.row()
+
+            game_id = self.new_game_list_to_show[ row ]
+
+            ###################
+            # 目录文件，删除
+            misc_funcs.delect_one_item_from_external_index(game_id,id_1,id_2)
+
+            ###################
+            # 重置列表
+            self.new_signal_need_reload_gamelist.emit()
+    #    
+    # 多选删除，当前列表中，删除勾选的游戏
+    def new_func_remove_selected_items(self):
+        # 未修改当前列表的数据
+        # 修改外面的数据，完成后，列表需要重载
+        # centeral_widget new_func_reload_gamelist()
+
+        if not index_edit_mode:
+            return
+        
+        if not multi_selection_mode:
+            return
+        
+        if not the_selected_items: # 空
+            return
+        
+        id_1,id_2 = self.new_remember_index_id_1,self.new_remember_index_id_2
+
+        if not id_1:
+            return
+        
+        if id_1 not in editable_index_files:
+            return
+
+        misc_funcs.delect_items_from_external_index(the_selected_items,id_1,id_2)
+
+        self.new_signal_need_reload_gamelist.emit()
+
+    def new_func_numbers_changed(self):
+        game_list_number = len(self.new_game_list_to_show)
+        self.singalGamelistNumberChanged.emit(game_list_number)
+
+    def new_func_select_all_items(self):
+        if not multi_selection_mode:
+            return
+
+        global the_selected_items
+        the_selected_items = set(self.new_game_list_to_show)
+        print(len(the_selected_items))
+
+        if self.new_game_list_to_show:
+            index_first = self.index(0,0)
+            index_last  = self.index(len(self.new_game_list_to_show)-1,0)
+            self.dataChanged.emit(index_first, index_last, [Qt.CheckStateRole])
+
+    def new_func_deselect_all_items(self):
+        if not multi_selection_mode:
+            return
+        
+        the_selected_items.clear()
+        print(len(the_selected_items))
+
+        if self.new_game_list_to_show:
+            index_first = self.index(0,0)
+            index_last  = self.index(len(self.new_game_list_to_show)-1,0)
+            self.dataChanged.emit(index_first, index_last, [Qt.CheckStateRole])        
+
+    def new_func_select_reverse(self):
+        if not multi_selection_mode:
+            return
+
+        global the_selected_items
+        the_selected_items = set(self.new_game_list_to_show) - the_selected_items
+        print(len(the_selected_items))
+      
+        if self.new_game_list_to_show:            
+            index_first = self.index(0,0)
+            index_last  = self.index(len(self.new_game_list_to_show)-1,0)
+            self.dataChanged.emit(index_first, index_last, [Qt.CheckStateRole])       
+
+class Model_for_table_view_2_level_tree_like(QAbstractTableModel):
+    
+    singalGamelistNumberChanged = Signal(int)
+    new_signal_time_for_choose_remember_game = Signal() # 发信号，后续看是否需要定位到上次选中的游戏
+    new_signal_need_reload_gamelist = Signal() 
+
+
+    def __init__(self,*args,**kwargs):
+        super().__init__(*args,**kwargs)
+
+        self.setObjectName("modelForTableView2LevelTreeLike")
+        self.new_table_type = "table_view_2_level_tree_like"
+
+        self.new_remember_index_id_1 = ""
+        self.new_remember_index_id_2 = ""
+        self.new_search_flag = False
+
+        self.new_game_list_to_show=[] # 这个是显示用的
+        
+        self.new_parent_set=set()
+        self.new_clone_set=set()
+
+        self.new_clone_have_parent=set() # 图标处也用这个
+        self.new_clone_not_have_parent=set()
+
+        self.new_parent_have_clone=set()
+
+        self.new_parent_to_clone=dict() 
+        # 第二层 内容，
+        # 按需 加载
+        # 按需 删除
+
+        #self.new_items_expanded=set() 
+        # # 记录 展开的 项目  
+        # # 重复了，和前面一项 keys 重复了
+
+    def data(self, index, role=Qt.DisplayRole):
+        if not index.isValid():
+            return None
+        
+        if role == Qt.DisplayRole:
+            return machine_dict[ self.new_game_list_to_show[index.row()] ] [ index.column() ]
+        elif role == Qt.DecorationRole:
+            if index.column() == 0:
+                game_id = self.new_game_list_to_show[index.row()]
+                if game_id in self.new_clone_have_parent:
+                    return get_icon_for_gamelist_table_fake_2_level(game_id)
+                else:
+                    return get_icon_for_gamelist_table(game_id)
+        elif role == Qt.EditRole:
+            return self.data(index, Qt.DisplayRole)
+        elif role ==Qt.CheckStateRole:
+            if multi_selection_mode:
+                if index.column()==0:
+                    game_id = self.new_game_list_to_show[index.row()]
+                    if game_id in the_selected_items:
+                        return Qt.Checked
+                    else:
+                        return Qt.Unchecked
+
+    def headerData(self,section,orientation,role=Qt.DisplayRole):
+        if role == Qt.DisplayRole:
+            if orientation == Qt.Horizontal:
+                if section < len(columns):
+                    return the_variables.columns_translation.get(columns[section],columns[section])
+
+            if orientation == Qt.Vertical:
+                if (section < 0) or (section >= len(self.new_game_list_to_show)):
+                    return
+                
+                game_id = self.new_game_list_to_show[section]
+                if game_id in self.new_parent_have_clone:
+                    if game_id in self.new_parent_to_clone:
+                        return string_for_close
+                    else:
+                        return string_for_open
+                return string_for_empty
+
+    def rowCount(self, parent=QModelIndex()):
+        return len(self.new_game_list_to_show)
+
+    def columnCount(self, parent=QModelIndex()):  
+        # 相同长度
+        return len(columns)
+
+    #编辑 flags()
+    def flags(self, index: QModelIndex) -> Qt.ItemFlags:
+        if not index.isValid():
+            return Qt.NoItemFlags
+        
+        if index.column()==0:
+            if multi_selection_mode:
+                return super().flags(index) | Qt.ItemIsUserCheckable 
+        elif index.column() == translation_column_index:
+            if gamelist_editable_mode:
+                return super().flags(index) | Qt.ItemIsEditable
+
+        #return super().flags(index) & ( ~ Qt.ItemIsEditable ) & ( ~ Qt.ItemIsUserCheckable )
+        return super().flags(index)
+    
+    #编辑 setData()
+    def setData(self, index, value, role=Qt.EditRole):
+        
+        if index.isValid():
+            
+            if role == Qt.EditRole:
+                if index.column() == translation_column_index:
+                    game_id, game_info = self.new_func_get_id_and_item_by_index(index)
+                    game_info[translation_column_index] = value
+                    #machine_dict[game_id] = game_info
+                    self.dataChanged.emit(index, index, [role] )
+                    return True
+        
+            #Qt::Unchecked	0	The item is unchecked.
+            #Qt::PartiallyChecked	1	The item is partially checked. Items in hierarchical models may be partially checked if some, but not all, of their children are checked.
+            #Qt::Checked	2	The item is checked.
+            elif role == Qt.CheckStateRole:
+                if index.column() ==0:
+                    game_id, game_info = self.new_func_get_id_and_item_by_index(index)
+                    if value==2:
+                        the_selected_items.add(game_id)
+                    elif value == 0:
+                        the_selected_items.discard(game_id)
+                    self.dataChanged.emit(index, index, [role])
+                    return True
+        
+        return False
+
+    def new_func_get_id_and_item_by_index(self, index):
+        row = index.row()
+        game_id = self.new_game_list_to_show[row]
+        return game_id, machine_dict[ game_id ] 
+
+    def new_func_get_item_id_by_index(self, index):
+        row = index.row()
+        game_id = self.new_game_list_to_show[row]
+        return game_id 
+
+    def new_func_get_item_id_by_row(self, row):
+        game_id = ""
+        if (row >= 0) and (row < len(self.new_game_list_to_show)):
+            game_id = self.new_game_list_to_show[row]
+        return game_id
+
+    # 鼠标点击排序
+    def sort(self,column, order = Qt.AscendingOrder):
+        
+        # Qt::AscendingOrder          0
+        # Qt::DescendingOrder        1
+        
+        if column < 0 or column >= len(columns):
+            return
+
+        if order == Qt.AscendingOrder:
+            reverse = False
+        else:
+            reverse = True
+        
+        the_variables.sort_column = column
+        the_variables.sort_reverse = reverse
+
+        ###
+        #self.layoutAboutToBeChanged.emit()
+        self.beginResetModel()
+        
+        self.new_func_sort_part_2(column,reverse)
+        
+        ###
+        #self.layoutChanged.emit()
+        self.endResetModel()
+
+        # 发送信号
+        self.new_signal_time_for_choose_remember_game.emit()
+
+    # 数据准备
+    @the_timer
+    def new_func_sort_part_1(self,games_to_be_sorted=None):
+        # 清空
+        self.new_func_clear_all_data()
+
+        if games_to_be_sorted is None:
+            games_to_be_sorted = []
+
+        if not games_to_be_sorted:
+            # 空值
+            return  # 之前已清空所有值
+
+
+        if games_to_be_sorted is all_set:
+            current_parent = parent_set
+            current_clone = clone_set 
+        else:
+            if not isinstance(games_to_be_sorted,set):
+                games_to_be_sorted = set(games_to_be_sorted)
+            current_parent = parent_set & games_to_be_sorted
+            current_clone = clone_set & games_to_be_sorted
+
+        self.new_parent_set = current_parent
+        self.new_clone_set = current_clone
+
+        #### 空
+        if ( not current_parent)  and ( not current_clone): 
+            # 非空值，但超范围 都被过虑了 ，剩余空值
+            return # 之前已清空所有值
+        
+        #### 半空
+        if not current_parent:
+            self.new_clone_not_have_parent = current_clone
+            return # 其它值已清空
+        
+        #### 半空 2
+        if not current_clone:
+            return # 其它值已清空
+
+        # current_clone_have_parent
+        current_clone_have_parent = []
+        for parent_id in current_parent.intersection(parent_to_clone): # 有 clone 的 parent 交集，缩小范围
+            current_clone_have_parent.extend(parent_to_clone[parent_id]) # 超范围
+        current_clone_have_parent = current_clone.intersection(current_clone_have_parent) # 处理超范围 # set
+        
+        # current_clone_not_have_parent
+        if len(current_clone_have_parent) == len(current_clone) :
+            current_clone_not_have_parent = set()
+        elif len(current_clone_have_parent) == 0 :
+            current_clone_not_have_parent = current_clone
+        else:
+            current_clone_not_have_parent = current_clone - current_clone_have_parent
+
+        # current_parent_to_clone
+        #current_parent_to_clone = dict()
+        #for clone_id in current_clone_have_parent:
+        #    parent_id = clone_to_parent[clone_id]
+        #    current_parent_to_clone.setdefault(parent_id,[]).append(clone_id)
+        parent_have_clone = {clone_to_parent[clone_id] for clone_id in current_clone_have_parent}
+
+        self.new_clone_have_parent = current_clone_have_parent
+        self.new_clone_not_have_parent = current_clone_not_have_parent
+        self.new_parent_have_clone=parent_have_clone
+
+    # 排序
+    @the_timer
+    def new_func_sort_part_2(self,column=None,reverse=None):
+
+        if ( not self.new_parent_set) and ( not self.new_clone_set):
+            self.new_game_list_to_show = []
+            return
+
+        if reverse is None:
+            reverse = the_variables.sort_reverse
+        if column is None:
+            column = the_variables.sort_column
+        
+        sort_key_func = get_sort_func(column,reverse)
+    
+        new_game_list_for_level_1 = list( self.new_parent_set | self.new_clone_not_have_parent )
+
+        # 第一层排序
+        new_game_list_for_level_1.sort( key = sort_key_func ,reverse = reverse, )
+
+        if self.new_parent_to_clone:
+
+            # 第二层排序 仅展开的部分
+            if self.new_parent_to_clone:
+                for clone_id_list in self.new_parent_to_clone.values():
+                    clone_id_list.sort( key = sort_key_func,reverse = reverse,)
+            
+            self.new_game_list_to_show=[]
+            for game_id in new_game_list_for_level_1:
+                self.new_game_list_to_show.append(game_id)
+                if game_id in self.new_parent_to_clone:
+                    self.new_game_list_to_show.extend(self.new_parent_to_clone[game_id])
+        else:
+            self.new_game_list_to_show = new_game_list_for_level_1
+
+
+    # 目录发出信号
+    # 显示新内容
+    def new_func_show_by_index(self,id_1,id_2):
+        print("")
+        print("show by index")
+        print("id_1: ",id_1)
+        print("id_2: ",id_2)
+
+        self.new_remember_index_id_1 = id_1
+        self.new_remember_index_id_2 = id_2
+        self.new_search_flag = False
+
+        ###
+        self.beginResetModel()
+        
+        self.new_func_clear_all_data()
+
+        self.new_func_sort_part_1( get_id_list_from_index_and_filter(id_1,id_2) )
+        self.new_func_sort_part_2()
+
+        self.singalGamelistNumberChanged.emit( len(self.new_parent_set) + len(self.new_clone_set) )
+
+        ###
+        self.endResetModel()
+
+        # 发送信号
+        self.new_signal_time_for_choose_remember_game.emit()
+    
+    # 列表搜索，显示搜索结果
+    def new_func_show_search_result(self,search_string,use_re=False,ignore_case=True,search_columns=tuple()):
+        print("")
+        print("show search result")
+        print("search_string: ",search_string)   
+
+        id_1 = self.new_remember_index_id_1
+        id_2 = self.new_remember_index_id_2
+        self.new_search_flag = True
+
+        ###
+        self.beginResetModel()
+        #self.layoutAboutToBeChanged.emit()
+
+        self.new_func_clear_all_data()
+        
+        # 搜索范围
+        temp_game_ids  =  get_id_list_from_index_and_filter(id_1,id_2) 
+        # 搜索结果
+        temp_game_ids = func_for_search(search_string,search_object_list=[temp_game_ids,],use_re=use_re,ignore_case=ignore_case,search_columns=search_columns)
+        # 排序
+        self.new_func_sort_part_1(temp_game_ids)
+        self.new_func_sort_part_2()
+
+        self.singalGamelistNumberChanged.emit( len(self.new_parent_set) + len(self.new_clone_set) )
+
+        ###
+        #self.layoutChanged.emit()
+        self.endResetModel()
+
+        # 发送信号
+        self.new_signal_time_for_choose_remember_game.emit()
+
+    def new_func_clear_all_data(self):
+        print("clear data")
+
+        self.new_game_list_to_show=[] # 这个是显示用的
+        
+        self.new_parent_set=set()
+        self.new_clone_set=set()
+
+        self.new_clone_have_parent=set() # 图标处也用这个
+        self.new_clone_not_have_parent=set()
+
+        self.new_parent_have_clone=set()
+
+        self.new_parent_to_clone=dict() # 第二层 内容，按需 加载
+
+
+    def new_func_clear_search_data(self):
+        pass
+
+    def new_func_get_index_by_game_id(self,game_id):
+        result = QModelIndex()
+
+        if not game_id:
+            return result
+        
+        if not self.new_game_list_to_show:
+            return result
+        
+        if (game_id not in self.new_clone_set) and (game_id not in self.new_parent_set):
+            return result
+
+        if game_id in self.new_clone_have_parent:
+            # 第二层
+            try:
+                parent_id = clone_to_parent[game_id]
+                parent_index = self.new_game_list_to_show.index(parent_id)
+                self.new_func_insert_children(parent_index)
+                clone_list_length = len(self.new_parent_to_clone[parent_id])
+                for i in range(clone_list_length):
+                    row = parent_index + i + 1
+                    if self.new_game_list_to_show[row] == game_id:
+                        return self.index(row,0)
+            except:
+                return result
+            
+        else:
+            # 第一层
+            try:
+                row = self.new_game_list_to_show.index(game_id)
+                return self.index(row,0)
+            except:
+                return result # 应该在有的，除非哪里出错了
+        
+        return result
+
+    def new_func_cancel_search(self):
+        if not self.new_search_flag:
+            return
+        
+        self.new_search_flag = False
+
+        id_1,id_2 = self.new_remember_index_id_1,self.new_remember_index_id_2
+        self.new_func_show_by_index(id_1,id_2)
+
+    @Slot(int)
+    def new_func_expand_or_collapse_item(self,section):
+        if (section < 0) or (section >= len(self.new_game_list_to_show)):
+            return
+
+        game_id = self.new_game_list_to_show[section]
+
+        if game_id in self.new_parent_have_clone:
+            if game_id in self.new_parent_to_clone:
+                #return string_for_close
+                # delete rows
+                self.new_func_delete_children(section,)
+            else:
+                #return string_for_open
+                # insert rows
+                self.new_func_insert_children(section,)
+    #
+    def new_func_delete_children(self,row):
+
+        parent_id = self.new_game_list_to_show[row]
+
+        if parent_id not in self.new_parent_have_clone:
+            return
+
+        if parent_id not in self.new_parent_to_clone:
+            return
+
+        clone_list = self.new_parent_to_clone[parent_id]
+        
+        if not clone_list:
+            print("clone_list is empty,maybe error")
+            return # 可能 哪里 出错了
+        
+        #clone_set = set(clone_list)
+        #for n in range(len(clone_list)):
+        #    if self.new_game_list_to_show[row + 1 + n] in clone_set:
+        #        #print(self.new_game_list_to_show[row + 1 + n])
+        #        pass
+        #    else:
+        #        print("maybe error")
+        
+        #
+        del self.new_parent_to_clone[parent_id]
+        self.headerDataChanged.emit(Qt.Vertical,row,row)
+        
+        self.beginRemoveRows(QModelIndex(), row+1, row +len(clone_list) )
+        del self.new_game_list_to_show[ row + 1 : row + len(clone_list) + 1 ]
+        self.endRemoveRows()
+        
+        
+        #
+        
+
+        print()
+        print("parent opened number :", len(self.new_parent_to_clone.keys()) )
+    #
+    def new_func_insert_children(self, row):
+
+        parent_id = self.new_game_list_to_show[row]
+
+        if parent_id not in self.new_parent_have_clone:
+            return
+
+        if parent_id in self.new_parent_to_clone:
+            return
+
+        sort_key_func = get_sort_func()
+        
+        clone_list = list( self.new_clone_have_parent.intersection( parent_to_clone[parent_id]) )
+        clone_list.sort(key=sort_key_func,reverse=the_variables.sort_reverse)
+
+        if not clone_list:
+            print("clone_list is empty,maybe error")
+            return # 可能 哪里 出错了
+        
+        #
+        self.new_parent_to_clone[parent_id] = clone_list
+        self.headerDataChanged.emit(Qt.Vertical,row,row)
+        
+        self.beginInsertRows(QModelIndex(), row+1, row +len(clone_list) )
+        self.new_game_list_to_show[row+1:row+1] = clone_list
+        self.endInsertRows()
+        
+        
+        #
+        
+
+        print()
+        print("parent opened number :", len(self.new_parent_to_clone.keys()) )
+    
+    def new_func_vertical_header_changed(self):
+        if self.new_game_list_to_show:
+            self.headerDataChanged.emit(Qt.Vertical, 0, len(self.new_game_list_to_show)-1)
+
+    # 删除一个游戏，从表格菜单中选择删除
+    def new_func_remove_one_item_by_index(self,index):
+        if not index_edit_mode:
+            return
+
+        id_1,id_2 = self.new_remember_index_id_1,self.new_remember_index_id_2
+        if not id_1:
+            return
+        if id_1 not in editable_index_files:
+            return
+
+        if index.isValid():
+
+            row = index.row()
+
+            game_id = self.new_game_list_to_show[ row ]
+
+            ###################
+            # 目录文件，删除
+            misc_funcs.delect_one_item_from_external_index(game_id,id_1,id_2)
+
+            ###################
+            # 重置列表
+            self.new_signal_need_reload_gamelist.emit()
+    #
+    # 多选删除，当前列表中，删除勾选的游戏
+    def new_func_remove_selected_items(self):
+        # 未修改当前列表的数据
+        # 修改外面的数据，完成后，列表需要重载
+        # centeral_widget new_func_reload_gamelist()
+
+        if not index_edit_mode:
+            return
+        
+        if not multi_selection_mode:
+            return
+        
+        if not the_selected_items: # 空
+            return
+        
+        id_1,id_2 = self.new_remember_index_id_1,self.new_remember_index_id_2
+
+        if not id_1:
+            return
+        
+        if id_1 not in editable_index_files:
+            return
+
+        misc_funcs.delect_items_from_external_index(the_selected_items,id_1,id_2)
+
+        self.new_signal_need_reload_gamelist.emit()
+
+    def new_func_select_all_items(self):
+        if not multi_selection_mode:
+            return
+
+        global the_selected_items
+        the_selected_items = self.new_parent_set | self.new_clone_set
+        print(len(the_selected_items))
+
+        if self.new_game_list_to_show:
+            index_first = self.index(0,0)
+            index_last  = self.index(len(self.new_game_list_to_show)-1,0)
+            self.dataChanged.emit(index_first, index_last, [Qt.CheckStateRole])
+
+    def new_func_deselect_all_items(self):
+        if not multi_selection_mode:
+            return
+        
+        the_selected_items.clear()
+        print(len(the_selected_items))
+
+        if self.new_game_list_to_show:
+            index_first = self.index(0,0)
+            index_last  = self.index(len(self.new_game_list_to_show)-1,0)
+            self.dataChanged.emit(index_first, index_last, [Qt.CheckStateRole])        
+
+    def new_func_select_reverse(self):
+        if not multi_selection_mode:
+            return
+
+        global the_selected_items
+        the_selected_items = (self.new_parent_set | self.new_clone_set) - the_selected_items
+        print(len(the_selected_items))
+      
+        if self.new_game_list_to_show:            
+            index_first = self.index(0,0)
+            index_last  = self.index(len(self.new_game_list_to_show)-1,0)
+            self.dataChanged.emit(index_first, index_last, [Qt.CheckStateRole])       
+
 class Model_for_tree_view(QAbstractItemModel):
     singalGamelistNumberChanged = Signal(int)
     new_signal_time_for_choose_remember_game = Signal() # 发信号，后续看是否需要定位到上次选中的游戏
+    new_signal_need_reload_gamelist = Signal() 
+
 
     def __init__(self,*args,**kwargs):
         super().__init__(*args,**kwargs)
@@ -1214,7 +2173,8 @@ class Model_for_tree_view(QAbstractItemModel):
         self.new_items_expanded = set()
 
     def data(self, index, role=Qt.DisplayRole):
-        if not index.isValid():return None;
+        if not index.isValid():
+            return None
         
         internal_id = index.internalId()
         if internal_id == 1:
@@ -1229,6 +2189,15 @@ class Model_for_tree_view(QAbstractItemModel):
         elif role == Qt.DecorationRole:
             if index.column() == 0:
                 return get_icon_for_gamelist_table(game_id)
+        elif role == Qt.EditRole:
+            return self.data(index, Qt.DisplayRole)
+#        elif role ==Qt.CheckStateRole:
+#            if multi_selection_mode:
+#                if index.column()==0:
+#                    if game_id in the_selected_items:
+#                        return Qt.Checked
+#                    else:
+#                        return Qt.Unchecked
         
         return None
 
@@ -1236,7 +2205,7 @@ class Model_for_tree_view(QAbstractItemModel):
         if role == Qt.DisplayRole:
             if orientation == Qt.Horizontal:
                 if section < len(columns):
-                    return columns[section]
+                    return the_variables.columns_translation.get(columns[section],columns[section])
 
             if orientation == Qt.Vertical:
                 return str(section)
@@ -1347,6 +2316,49 @@ class Model_for_tree_view(QAbstractItemModel):
         print()
         print("parent opened number :", len(self.new_parent_to_clone.keys()) )
         print( "clone_list", len(clone_list),clone_list )
+
+    #编辑 flags()
+    def flags(self, index: QModelIndex) -> Qt.ItemFlags:
+        if not index.isValid():
+            return Qt.NoItemFlags
+        
+        #if index.column()==0:
+        #    if multi_selection_mode:
+        #        return super().flags(index) | Qt.ItemIsUserCheckable 
+        if index.column() == translation_column_index:
+            if gamelist_editable_mode:
+                return super().flags(index) | Qt.ItemIsEditable
+
+        #return super().flags(index) & ( ~ Qt.ItemIsEditable ) & ( ~ Qt.ItemIsUserCheckable )
+        return super().flags(index)
+    
+    #编辑 setData()
+    def setData(self, index, value, role=Qt.EditRole):
+        
+        if index.isValid():
+            
+            if role == Qt.EditRole:
+                if index.column() == translation_column_index:
+                    game_id, game_info = self.new_func_get_id_and_item_by_index(index)
+                    game_info[translation_column_index] = value
+                    #machine_dict[game_id] = game_info
+                    self.dataChanged.emit(index, index, [role] )
+                    return True
+        
+            ##Qt::Unchecked	0	The item is unchecked.
+            ##Qt::PartiallyChecked	1	The item is partially checked. Items in hierarchical models may be partially checked if some, but not all, of their children are checked.
+            ##Qt::Checked	2	The item is checked.
+            #elif role == Qt.CheckStateRole:
+            #    if index.column() ==0:
+            #        game_id, game_info = self.new_func_get_id_and_item_by_index(index)
+            #        if value==2:
+            #            the_selected_items.add(game_id)
+            #        elif value == 0:
+            #            the_selected_items.discard(game_id)
+            #        self.dataChanged.emit(index, index, [role])
+            #        return True
+        
+        return False
     #######
     #######
     #######
@@ -1423,32 +2435,14 @@ class Model_for_tree_view(QAbstractItemModel):
         if ( not self.new_parent_set) and ( not self.new_clone_set):
             self.new_game_list_for_level_1 = []
             return
-        
-        # 未指定值，则，读取默认值
-        if column is None:
-            column = the_variables.sort_column
+
         if reverse is None:
             reverse = the_variables.sort_reverse
-        if column < 0 or column >= len(columns):
-            column = 0
-        if type(reverse) is not bool:
-            reverse = False
+        if column is None:
+            column = the_variables.sort_column
         
-        # sort key func
-        def sort_key_func_1(game_id):
-            return locale.strxfrm(machine_dict[game_id][column])
-        def sort_key_func_2(game_id):
-            return machine_dict[game_id][column]
-        #
-        sort_key_func = sort_key_func_2
-        if the_variables.sort_use_locale:
-            if column in the_variables.sort_colums_use_locale:
-                sort_key_func = sort_key_func_1
-        if column == id_column_index:
-            sort_key_func = None
-            #print("sort by id")
+        sort_key_func = get_sort_func(column,reverse)
 
-    
         if not self.new_parent_set:
             self.new_game_list_for_level_1 = list( self.new_clone_not_have_parent )
         elif not self.new_clone_not_have_parent:
@@ -1478,6 +2472,19 @@ class Model_for_tree_view(QAbstractItemModel):
             game_id = self.new_parent_to_clone[parent_id][index.row()]
         
         return game_id, machine_dict[ game_id ] 
+
+    def new_func_get_item_id_by_index(self, index):
+        if not index.isValid():return None;
+        
+        internal_id = index.internalId()
+        if internal_id == 1:
+            game_id = self.new_game_list_for_level_1[index.row()]
+        else:
+            parent_row = internal_id - 2
+            parent_id = self.new_game_list_for_level_1[parent_row]
+            game_id = self.new_parent_to_clone[parent_id][index.row()]
+        
+        return game_id 
 
 
     def sort(self,column, order = Qt.AscendingOrder):
@@ -1572,7 +2579,6 @@ class Model_for_tree_view(QAbstractItemModel):
         # 发送信号
         self.new_signal_time_for_choose_remember_game.emit()
 
-
     #####
     def new_func_clear_all_data(self):
         print("clear data ",self.new_table_type)
@@ -1641,6 +2647,67 @@ class Model_for_tree_view(QAbstractItemModel):
         id_1,id_2 = self.new_remember_index_id_1,self.new_remember_index_id_2
         self.new_func_show_by_index(id_1,id_2)
 
+    def new_func_select_all_items(self):
+        if not multi_selection_mode:
+            return
+
+        self.layoutAboutToBeChanged.emit() 
+
+        global the_selected_items
+        the_selected_items = self.new_parent_set | self.new_clone_set
+        print(len(the_selected_items))
+
+        self.layoutChanged.emit()  
+
+    def new_func_deselect_all_items(self):
+        if not multi_selection_mode:
+            return
+
+        self.layoutAboutToBeChanged.emit()
+
+        the_selected_items.clear()
+        print(len(the_selected_items))
+
+        self.layoutChanged.emit()   
+
+    def new_func_select_reverse(self):
+        if not multi_selection_mode:
+            return
+
+        self.layoutAboutToBeChanged.emit() 
+
+        global the_selected_items
+        the_selected_items = (self.new_parent_set | self.new_clone_set) - the_selected_items
+        print(len(the_selected_items))
+
+        self.layoutChanged.emit()  
+
+    # 删除一个游戏，从表格菜单中选择删除
+    def new_func_remove_one_item_by_index(self,index):
+        if not index_edit_mode:
+            return
+
+        id_1,id_2 = self.new_remember_index_id_1,self.new_remember_index_id_2
+        if not id_1:
+            return
+        if id_1 not in editable_index_files:
+            return
+
+        if index.isValid():
+
+            game_id = self.new_func_get_item_id_by_index(index)
+
+            ###################
+            # 目录文件，删除
+            misc_funcs.delect_one_item_from_external_index(game_id,id_1,id_2)
+
+            ###################
+            # 重置列表
+            self.new_signal_need_reload_gamelist.emit()
+    #
+#########################
+#########################
+#########################
 # index_list = []
 # index_has_children = dict()
 class Model_for_index(QAbstractItemModel):
@@ -1723,6 +2790,24 @@ class Model_for_index(QAbstractItemModel):
                 
         return id_1,id_2
     
+    def new_func_if_index_file_is_editable(self, index):
+        if index.isValid():
+            internal_id = index.internalId()
+
+            if internal_id == 1:
+                id_1 = index_list[index.row()]
+                if id_1 in editable_index_files:
+                    return True
+            elif internal_id > 1:
+                parent_row = internal_id -2
+                id_1 = index_list[parent_row]
+                #id_2 = index_has_children[id_1][index.row()]
+            
+                if id_1 in editable_index_files:
+                    return True
+        
+        return False
+
     def new_func_find_item(self,index_id_1,index_id_2): # return QModelIndex
         row_level_1 = -1
         row_level_2 = -1
@@ -1775,96 +2860,102 @@ class Model_for_index(QAbstractItemModel):
 
         self.endResetModel()
 
-    
+# editable_index_list
+# editable_index_has_children = dict()
+class Model_for_index_chooser(QAbstractItemModel):
+    def __init__(self,):
+        super().__init__()
 
-    ###
-    # def hasChildren(self,parent_index):
-    #     if parent_index.isValid():
-    #         return False
-    #     return True
+    def data(self, index, role):
+        if not index.isValid():
+            return None;
 
+        if role == Qt.DisplayRole:
+            if index.column() == 0:
+                internal_id = index.internalId()
+                if internal_id == 1:
+                    file_path = editable_index_list[index.row()]
+                    the_text = os.path.basename(file_path)
+                    return the_text
+                elif internal_id > 1:
+                    parent_row = internal_id -2
+                    parent_id = editable_index_list[parent_row]
+                    if parent_id in editable_index_has_children:
+                        the_text =  editable_index_has_children[parent_id][index.row()]
+                        return the_text
+            elif index.column() == 1: # 文件路径
+                internal_id = index.internalId()
+                if internal_id == 1:
+                    file_path = editable_index_list[index.row()]
+                    #file_path = os.path.abspath(file_path)
+                    return file_path
+                elif internal_id > 1:
+                    parent_row = internal_id -2
+                    parent_id = editable_index_list[parent_row]
+                    if parent_id in editable_index_has_children:
+                        the_text =  editable_index_has_children[parent_id][index.row()]
+                        return the_text
+            
+    def headerData(self,section,orientation,role ):
+        if role == Qt.DisplayRole:
+            if orientation == Qt.Horizontal:
+                if section == 0:
+                    return "目录"
+                elif section == 1:
+                    return "文件路径"
+            if orientation == Qt.Vertical:
+                return str(section)
 
+    def rowCount(self, parent ):
+
+        if parent==QModelIndex():
+            return len(editable_index_list)
+        else :
+            if parent.internalId() == 1 :
+                parent_id = editable_index_list[parent.row()]
+                if parent_id in editable_index_has_children:
+                    return len( editable_index_has_children[parent_id] )
+            
+        return 0
+
+    def columnCount(self, parent ):  
+        # 相同长度
+        return 2
+        
+    def index(self,row,column,parent):
+        if parent==QModelIndex():
+            return self.createIndex( row,column,1 ) # 第一层
+        elif parent.internalId() == 1 :
+            # parent.row() + 2 
+            return self.createIndex( row,column, parent.row() + 2 ) # 第二层
+        return QModelIndex()
+        
+    def parent(self,index):
+        if index.isValid():
+            id_number = index.internalId()
+
+            if id_number == 1:
+                return QModelIndex()
+            
+            if id_number > 1:
+                temp = id_number - 2
+                return self.createIndex( temp,0,1)
+        return QModelIndex()
+
+    def new_func_get_index_id_by_index(self, index): # return id_1,id_2
+        id_1,id_2="",""
+        
+        if index.isValid():
+            internal_id = index.internalId()
+            if internal_id == 1:
+                id_1 = editable_index_list[index.row()]
+            elif internal_id > 1:
+                parent_row = internal_id -2
+                id_1 = editable_index_list[parent_row]
+                id_2 = editable_index_has_children[id_1][index.row()]
+                
+        return id_1,id_2
 
 
 if __name__ == "__main__":
-    print("")
-    print("test")
-    filename = the_files.data_file
-    data = None
-
-    import os
-    import pickle
-
-    if os.path.isfile(filename):
-        try:
-            file = open(filename, 'rb')
-            data = pickle.load( file )
-            file.close()
-        except:
-            print( "read pickle failed")
-            print( filename )
-            
-
-    if data:
-
-
-        # 更新模型数据
-        ##'columns', 'dict_data', 'internal_index', 'machine_dict', 'mame_version', 'set_data'
-        #
-        ## clounms = []
-        set_value("columns",data["columns"])
-        #
-        ## dict_data
-        ##    clone_to_parent parent_to_clone
-        # clone_to_parent = dict()
-        # parent_to_clone = dict()
-        set_value("clone_to_parent",data["dict_data"]["clone_to_parent"])
-        set_value("parent_to_clone",data["dict_data"]["parent_to_clone"])
-        #print(data["dict_data"].keys())
-        #
-        ## internal_index = dict()
-        set_value("internal_index",data["internal_index"])
-        #
-        #machine_dict = dict()
-        set_value("machine_dict",data["machine_dict"])
-        #
-        ## mame_version = ""
-        set_value("mame_version",data["mame_version"])
-        #
-        ## set data
-        ##   all_set parent_set clone_set
-        ## all_set = dict()
-        ## parent_set = dict()
-        ## clone_set = dict()
-        set_value("all_set",data["set_data"]["all_set"])
-        set_value("parent_set",data["set_data"]["parent_set"])
-        set_value("clone_set",data["set_data"]["clone_set"])
-        
-
-        #
-        update_some_value()    
-
-  
-
-        x=set()
-        x.add("kof97")
-        temp_set= all_set - x
-
-
-        print("........")
-        a,b=func_for_sort_treeview(column = None,games_to_be_sorted=temp_set)               
-        a,b=func_for_sort_treeview(column = None,reverse=True,games_to_be_sorted=temp_set)  
-        a,b=func_for_sort_treeview(column = 1,games_to_be_sorted=temp_set)                   
-        a,b=func_for_sort_treeview(column = 1,reverse=True,games_to_be_sorted=temp_set)      
-        a,b=func_for_sort_treeview(column = 2,games_to_be_sorted=temp_set)                   
-        a,b=func_for_sort_treeview(column = 2,reverse=True,games_to_be_sorted=temp_set)      
-
-                
-        print("........")
-        print("all_set:",len(all_set))
-        print("temp_set:",len(temp_set))
-        print("levle 1:",len(a))
-        print("parent have children:",len(b))
-
-          
-
+    pass

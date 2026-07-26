@@ -4,6 +4,8 @@ import locale
 import re
 import sqlite3
 import functools
+import traceback
+import webbrowser
 
 from qtpy.QtWidgets import *
 from qtpy.QtGui import *
@@ -12,7 +14,6 @@ from qtpy.QtCore import *
 import the_variables
 import the_files
 import ui_index
-import ui_gamelist_tableview
 import ui_small_windows
 import misc_funcs
 import xml_parse_mame
@@ -21,7 +22,6 @@ import ui_central_widget
 import the_user_settings_default_value
 import extra_folders
 import extra_database
-
 
 
 class TheMainWindow(QMainWindow):
@@ -114,7 +114,7 @@ class TheMainWindow(QMainWindow):
         
         self.new_action_save_settings = QAction("save settings",self,)
         #self.new_action_save_settings.triggered.connect( self.new_func_save_settings )
-        
+    
     def new_func_createMenus(self):
         self.new_menu_ui = self.menuBar().addMenu("UI")
         #self.new_menu_ui.addAction(self.new_action_save_settings)
@@ -232,6 +232,13 @@ class TheMainWindow(QMainWindow):
         action_set_highlight_row_colour.triggered.connect( self.new_func_for_set_highlight_row_colour )
         self.new_menu_font.addAction(action_set_highlight_row_colour)
 
+        # 字体等 游戏列表 2 level tree like ，设置打开关闭字符串
+        self.new_menu_font.addSeparator()
+        action_set_open_colse_string_for_tableview_2_level_tree_like = QAction("设置打开关闭字符串",self,)
+        action_set_open_colse_string_for_tableview_2_level_tree_like.setCheckable(False)
+        action_set_open_colse_string_for_tableview_2_level_tree_like.triggered.connect( self.centralWidget().new_func_set_open_colse_string_for_tableview_2_level_tree_like )
+        self.new_menu_font.addAction(action_set_open_colse_string_for_tableview_2_level_tree_like)
+
 
 
         ##### 设置
@@ -248,6 +255,27 @@ class TheMainWindow(QMainWindow):
         self.new_action_extra_path = QAction("周边路径",self,)
         self.new_menu_settings.addAction(self.new_action_extra_path)
         self.new_action_extra_path.triggered.connect( self.new_func_set_extra_path )
+
+        ##### 目录
+        self.new_menu_index = self.menuBar().addMenu("目录")
+        # 编辑
+        try:
+            value = self.new_settings.value("index/edit_mode",type=bool)
+        except:
+            value = False
+        if value:ui_models.index_edit_mode = True
+        new_action_set_index_edit_mode = QAction("编辑目录",self,)
+        new_action_set_index_edit_mode.setCheckable(True)
+        new_action_set_index_edit_mode.setChecked(ui_models.index_edit_mode)
+        new_action_set_index_edit_mode.toggled.connect( self.new_func_set_index_edit_mode )
+        self.new_menu_index.addAction(new_action_set_index_edit_mode)
+        # 保存
+        new_action_save_index = QAction("保存目录(编辑完成后，记得手动点击此处保存)",self,)
+        new_action_save_index.setCheckable(False)
+        new_action_save_index.triggered.connect( self.new_func_save_index )
+        self.new_menu_index.addAction(new_action_save_index)
+
+
 
         ##### 游戏列表
         self.new_menu_gamelist=self.menuBar().addMenu("游戏列表")
@@ -267,6 +295,10 @@ class TheMainWindow(QMainWindow):
         self.new_action_show_tableview_2_level = QAction("显示 tableview 2 level",self,)
         self.new_action_show_tableview_2_level.triggered.connect( self.centralWidget().new_func_show_tableview_2_level )
         self.new_menu_gamelist.addAction(self.new_action_show_tableview_2_level)
+        # 游戏列表 显示 tableview 2 level tree like
+        self.new_action_show_tableview_2_level_tree_like = QAction("显示 tableview 2 level 树状 (未完成)",self,)
+        self.new_action_show_tableview_2_level_tree_like.triggered.connect( self.centralWidget().new_func_show_tableview_2_level_tree_like )
+        self.new_menu_gamelist.addAction(self.new_action_show_tableview_2_level_tree_like)
         # 游戏列表 显示 treeview
         self.new_action_show_treeview = QAction("显示 treeview",self,)
         self.new_action_show_treeview.triggered.connect( self.centralWidget().new_func_show_treeview )
@@ -304,6 +336,29 @@ class TheMainWindow(QMainWindow):
         action_set_gamelist_filter.setCheckable(False)
         action_set_gamelist_filter.triggered.connect( self.new_func_for_set_gamelist_filter )
         self.new_menu_gamelist.addAction(action_set_gamelist_filter)
+        # 游戏列表 多选模式（勾选）
+        self.new_menu_gamelist.addSeparator()
+        action_set_multi_selection_mode = QAction("多选模式（勾选）(仅前三个列表)",self,)
+        action_set_multi_selection_mode.setCheckable(True)
+        #try:    ui_models.multi_selection_mode = self.new_settings.value("gamelist/multi_selection_mode",False,type=bool)
+        #except: ui_models.multi_selection_mode = False
+        action_set_multi_selection_mode.setChecked(ui_models.multi_selection_mode)
+        action_set_multi_selection_mode.toggled.connect( self.new_func_gamelist_multi_selection_mode )
+        self.new_menu_gamelist.addAction(action_set_multi_selection_mode)
+        # 游戏列表 列表编辑模式 仅翻译列
+        self.new_menu_gamelist.addSeparator()
+        action_set_gamelist_edit_mode = QAction("列表编辑模式 仅翻译列(未完成)",self,)
+        action_set_gamelist_edit_mode.setCheckable(True)
+        #try:    ui_models.gamelist_editable_mode = self.new_settings.value("gamelist/gamelist_editable_mode",False,type=bool)
+        #except: ui_models.gamelist_editable_mode = False
+        action_set_gamelist_edit_mode.setChecked(ui_models.gamelist_editable_mode)
+        action_set_gamelist_edit_mode.toggled.connect( self.new_func_gamelist_list_edit_mode )
+        self.new_menu_gamelist.addAction(action_set_gamelist_edit_mode)
+        # 游戏列表 保存
+        self.new_menu_gamelist.addSeparator()
+        action_for_save_gamelist = QAction("保存游戏列表",self,)
+        action_for_save_gamelist.triggered.connect( self.new_func_save_gamelist )
+        self.new_menu_gamelist.addAction(action_for_save_gamelist)
 
 
         ##### 周边
@@ -318,6 +373,14 @@ class TheMainWindow(QMainWindow):
 
         ##### 其它
         self.new_ui_menu_other = self.menuBar().addMenu("其它")
+
+        the_url = r"https://github.com/gdicnng/JKui"
+        action_website = QAction("网址：" + the_url,self,)
+        action_website.triggered.connect(lambda: webbrowser.open(url=the_url))
+        self.new_ui_menu_other.addAction(action_website)
+
+        self.new_ui_menu_other.addSeparator()
+
         action_show_python_version = QAction("显示 python 版本",self,)
         action_show_python_version.triggered.connect(self.new_func_show_python_version)
         self.new_ui_menu_other.addAction(action_show_python_version)
@@ -482,15 +545,17 @@ class TheMainWindow(QMainWindow):
         self.new_toolbar_for_gamelist.setMovable(False)
         self.new_toolbar_for_gamelist.setFloatable(False)
         new_action_tableview = QAction("1",self,)
-        #new_action_tableview.setCheckable(True)
         new_action_tableview.triggered.connect( self.centralWidget().new_func_show_tableview )
         new_action_tableview_2_level = QAction("2",self,)
         new_action_tableview_2_level.triggered.connect( self.centralWidget().new_func_show_tableview_2_level )
-        new_action_treeview = QAction("3",self,)
+        new_action_tableview_2_level_tree_like = QAction("3",self,)
+        new_action_tableview_2_level_tree_like.triggered.connect( self.centralWidget().new_func_show_tableview_2_level_tree_like )
+        new_action_treeview = QAction("4",self,)
         new_action_treeview.triggered.connect( self.centralWidget().new_func_show_treeview )
 
         self.new_toolbar_for_gamelist.addAction(new_action_tableview)
         self.new_toolbar_for_gamelist.addAction(new_action_tableview_2_level)
+        self.new_toolbar_for_gamelist.addAction(new_action_tableview_2_level_tree_like)
         self.new_toolbar_for_gamelist.addAction(new_action_treeview)
         #self.new_toolbar_for_gamelist.addSeparator()
 
@@ -528,14 +593,21 @@ class TheMainWindow(QMainWindow):
         mame_working_directory = self.new_settings.value("mame/working_directory") 
         mame_path, mame_working_directory = misc_funcs.get_abspath_for_mame_and_working_directory(mame_path, mame_working_directory)
         
+        if shutil.which(mame_path) is None:
+            QMessageBox.warning(self.parentWidget(), "出错", "程序不可以执行：" + mame_path)
+            self.new_settings.setValue("mame/path", "")
+            self.new_settings.setValue("mame/working_directory", "")
+            self.new_settings.sync()
+            sys.exit()
+
         process = QProcess(self)
         if mame_working_directory:
             if os.path.isdir(mame_working_directory):
                process.setWorkingDirectory(mame_working_directory)
         self.new_buffer_to_hold_mame_data = io.BytesIO()
-        #process.setProcessChannelMode(QProcess.ForwardedErrorChannel)
+        process.setProcessChannelMode(QProcess.ForwardedErrorChannel)
         process.readyReadStandardOutput.connect(lambda: self.new_buffer_to_hold_mame_data.write(process.readAllStandardOutput().data()))
-        process.readyReadStandardError.connect(lambda: process.readAllStandardError())
+        #process.readyReadStandardError.connect(lambda: process.readAllStandardError())
         process.finished.connect(lambda: self.new_func_data_from_emulator_is_ready())
         process.start(mame_path, the_variables.command_line_options_for_emulator_to_export_data)
     # 初始化，解析 MAME xml
@@ -543,6 +615,13 @@ class TheMainWindow(QMainWindow):
     def new_func_data_from_emulator_is_ready(self,):
         print()
         print("data from emulator is ready")
+        number = self.new_buffer_to_hold_mame_data.tell()
+        if number == 0:
+            QMessageBox.warning(self.parentWidget(), "出错", "导出数据为空")
+            self.new_settings.setValue("mame/path", "")
+            self.new_settings.setValue("mame/working_directory", "")
+            self.new_settings.sync()
+            sys.exit()
         self.new_func_parse_xml()
 
     def new_func_parse_xml(self,):
@@ -554,32 +633,44 @@ class TheMainWindow(QMainWindow):
         self.new_worker_for_parse_xml.moveToThread(self.new_thread_for_parse_xml)
 
         self.new_thread_for_parse_xml.started.connect(self.new_worker_for_parse_xml.new_func_do_work)
+
+        self.new_worker_for_parse_xml.new_signal_for_save_file_failed.connect(self.new_func_save_gamelist_data_failed)
         self.new_worker_for_parse_xml.new_finished.connect(self.new_func_on_xml_parse_finished)
         self.new_worker_for_parse_xml.new_finished.connect(self.new_thread_for_parse_xml.quit)
         self.new_worker_for_parse_xml.new_finished.connect(self.new_worker_for_parse_xml.deleteLater)
+
         self.new_thread_for_parse_xml.finished.connect(self.new_thread_for_parse_xml.deleteLater)
 
-        print("parsing xml")
         self.new_thread_for_parse_xml.start()
     #
+    @Slot()
+    def new_func_save_gamelist_data_failed(self):
+        QMessageBox.warning(self.parentWidget(), "出错", "数据文件保存失败：" + the_files.data_file)
+    #
     @Slot(dict)
-    def new_func_on_xml_parse_finished(self, result):
+    def new_func_on_xml_parse_finished(self,result):
         """XML解析完成"""
         print()
         print("xml parse finish ###########")
+
+        self.new_func_progressbar_hide()
+
+        if not result:
+            QMessageBox.warning(self, "出错", "xml 解析失败")
+            self.new_settings.setValue("mame/path", "")
+            self.new_settings.setValue("mame/working_directory", "")
+            self.new_settings.sync()
+            sys.exit()
+
+        
         self.new_buffer_to_hold_mame_data.close()
 
         print(type(result))
         print(result.keys())
         
-        # 保存游戏列表数据
-        self.new_func_save_gamelist_data(result)
         self.new_func_update_model_data(result)
 
-        # 读取列表翻译数据
-
-
-        self.new_func_progressbar_hide()
+        
 
     # 初始化 类型二，从 临时文件 读取 数据
     def new_func_load_gamelist_data_from_file(self):
@@ -599,22 +690,6 @@ class TheMainWindow(QMainWindow):
         
         self.new_func_update_model_data(data)
 
-    def new_func_save_gamelist_data(self,data):
-        print()
-        print( "save gamelist data" )
-        filename = the_files.data_file
-
-        try:
-            file = open( filename , 'wb' )
-            pickle.dump( data , file )
-            file.close(  )
-            return 0
-        except:
-            print( "save pickle failed")
-            print( "save to ")
-            print( filename )
-            sys.exit()
-    
     #################################
     #################################
     #################################
@@ -704,6 +779,12 @@ class TheMainWindow(QMainWindow):
         print(folders_path)
         extra_folders.all_dict = {game_id:game_id for game_id in data["set_data"]["all_set"]} # 
         external_index = extra_folders.get_external_index_data(folders_path,file_extension=".ini")
+        # 更新 ui_models.editable_index_files
+        for x in external_index.keys():
+            if os.access(x, mode=os.W_OK):
+                #print(x,"\t",True)
+                ui_models.editable_index_files.add(x)
+        #print(len(ui_models.editable_index_files))
         external_index_by_source = extra_folders.get_external_index_data(folders_path,file_extension=".source_ini")
         ui_models.set_value("external_index",external_index)
         ui_models.set_value("external_index_by_source",external_index_by_source)
@@ -714,7 +795,7 @@ class TheMainWindow(QMainWindow):
         # 加载翻译文件
         self.new_func_load_translation_file()
         
-        # 重新构建索引列表
+        # 目录列表，刷新
         self.new_ui_index.model().beginResetModel()
         top_index_list_string = self.new_settings.value("index/top_index_list")
         if not top_index_list_string:
@@ -723,6 +804,9 @@ class TheMainWindow(QMainWindow):
             top_index_list = top_index_list_string.split(";")
         ui_models.rebuild_index(top_index_list)
         self.new_ui_index.model().endResetModel()
+
+        # 可编辑目录 数据添加
+        ui_models.build_editable_index_data()
 
         # 加载图标
         icon_zip_path = self.new_settings.value("extra/icons")
@@ -755,12 +839,6 @@ class TheMainWindow(QMainWindow):
             the_variables.current_id = last_game
 
         self.new_func_index_select_remember_after_load_settings()
-
-
-    def new_func_load_external_index(self,):
-        external_inedex = dict()
-        # 待补充
-        return external_inedex
     
     def new_func_load_translation_file(self,):
         translation_file_path = self.new_settings.value("mame/translation_file")
@@ -849,7 +927,19 @@ class TheMainWindow(QMainWindow):
         try:    the_variables.sort_use_locale = self.new_settings.value("gamelist/sort_use_locale",type=bool)
         except: the_variables.sort_use_locale = False
 
+        # gamelist_faketree ,展开、收起 字符串
+        for key in ["string_for_open",    "string_for_close",   "string_for_empty",   ]:
+            try: 
+                value = self.new_settings.value(f"gamelist_faketree/{key}",type=str)
+            except: 
+                value = ""
 
+            value = value.strip()
+            value = value.strip('"')
+            if value:
+                setattr(ui_models,key,value)
+
+    # menu qss
     def new_func_load_qss_file_by_menu(self,sender): # sender = self.sender() # pyside2 中没用？
         # qss 文件，位于 the_files.folder_qss 中
         
@@ -965,6 +1055,7 @@ class TheMainWindow(QMainWindow):
                     action.setChecked(True)
                     break        
 
+    # menu style
     def new_func_set_style_by_menu(self,sender): # sender = self.sender() # pyside2 中没用？
         print("")
         print("set style by menu")
@@ -1095,6 +1186,8 @@ class TheMainWindow(QMainWindow):
     def new_func_slot_for_receive_gamelist_number_change(self,number):
         self.new_ui_statusbar_for_current_number.setText( str(number)+"/" )
 
+    # menu 加载周边文本到数据库
+    @Slot()
     def new_func_load_extra_text_to_database(self,):
         self.new_func_show_progress_bar()
 
@@ -1136,8 +1229,6 @@ class TheMainWindow(QMainWindow):
         self.new_worker_for_load_data_to_database.new_signal_for_finished.connect(self.new_thread_for_load_data_to_database.deleteLater)        
         
         self.new_thread_for_load_data_to_database.start()
-
-
     # menu 删除模拟器路径
     @Slot()
     def new_func_delete_emulator(self,):
@@ -1266,7 +1357,6 @@ class TheMainWindow(QMainWindow):
             the_variables.auto_select_last_game = True
         else:
             the_variables.auto_select_last_game = False
-
     # menu 字体等 gamelist 设置行高
     @Slot()
     def new_func_for_set_row_height(self):
@@ -1301,8 +1391,7 @@ class TheMainWindow(QMainWindow):
         if self.new_dialog_for_set_gamelist_highlight_row_colour.exec():
             print("用户点击了“确认”")
             #self.centralWidget().new_func_refresh_layoutchange()
-
-
+    # menu gamelist 设置全局过滤
     @Slot()
     def new_func_for_set_gamelist_filter(self):
         print("设置游戏列表的全局过滤")
@@ -1314,18 +1403,72 @@ class TheMainWindow(QMainWindow):
         if self.new_dialog_for_set_gamelist_filter.exec():
             print("用户点击了“确认”")
             self.centralWidget().new_func_reload_gamelist()
+    # menu index 编辑目录
+    @Slot(bool)
+    def new_func_set_index_edit_mode(self,checked):
+        ui_models.index_edit_mode = checked
+        self.new_settings.setValue("index/edit_mode",checked)
+        self.centralWidget().new_func_refresh_layoutchange()
+    # menu index 保存目录
+    @Slot()
+    def new_func_save_index(self):
+        print("保存自定义目录")
+
+        finished_list = []
+        failed_list = []
+        for index_file in sorted( ui_models.index_files_be_edited ):
+            data = ui_models.external_index[index_file]
+            try:
+                extra_folders.folders_save(index_file,data)
+                print("save file : ",index_file)
+                finished_list.append(index_file)
+            except:
+                failed_list.append(index_file)
+
+        ui_models.index_files_be_edited = ui_models.index_files_be_edited - set(finished_list)
+
+        if failed_list:
+            QMessageBox.warning(self,"文件保存失败","\n".join(failed_list))
+    # menu gamelist 多选模式（勾选）
+    @Slot(bool)
+    def new_func_gamelist_multi_selection_mode(self,checked):
+        ui_models.multi_selection_mode = checked
+        self.new_settings.setValue("gamelist/multi_selection_mode",checked)
+        self.centralWidget().new_func_refresh_layoutchange()
+        #print(ui_models.multi_selection_mode)
+    # menu gamelist 列表编辑模式 仅翻译列
+    @Slot(bool)
+    def new_func_gamelist_list_edit_mode(self,checked):
+        ui_models.gamelist_editable_mode = checked
+        self.new_settings.setValue("gamelist/gamelist_editable_mode",checked)
+        self.centralWidget().new_func_refresh_layoutchange()
+    # menu gamelist 保存游戏列表
+    @Slot()
+    def new_func_save_gamelist(self):
+        print("保存游戏列表")
+        try:
+            self.new_dialog_for_save_translation_file
+        except:
+            self.new_dialog_for_save_translation_file = ui_small_windows.Dialog_for_save_translation_file(self.new_settings,self,)
+        self.new_dialog_for_save_translation_file.new_func_set_values()
+        self.new_dialog_for_save_translation_file.exec()
 
     # menu gamelist  扫描游戏文件，极简版，只扫描 .zip/.7z/文件夹 是否存在
     def new_func_scan_game_files_only_check_if_file_exists(self,merged=False):
-        print()
-        print("scan game files, only check if file exists")
+        # 从 MAME 查询 rompath 路径信息
 
         self.new_func_show_progress_bar()
+
+        # 
+        self.new_variables_for_scan_roms = {}
+        self.new_variables_for_scan_roms["merged"] = merged  ###
 
         mame_path = self.new_settings.value("mame/path") 
         mame_working_directory = self.new_settings.value("mame/working_directory") 
         mame_path, mame_working_directory = misc_funcs.get_abspath_for_mame_and_working_directory(mame_path, mame_working_directory)
         command_list = ["-showconfig"]
+
+        self.new_variables_for_scan_roms["mame_working_directory"] = mame_working_directory  ###
 
         print(mame_path)
         print(mame_working_directory)
@@ -1338,15 +1481,17 @@ class TheMainWindow(QMainWindow):
         
         self.new_buffer_to_hold_mame_path_info = io.BytesIO()
 
-        #self.new_process_for_mamepath.setProcessChannelMode(QProcess.ForwardedChannels)
         self.new_process_for_mamepath.setProcessChannelMode(QProcess.ForwardedErrorChannel)
 
         self.new_process_for_mamepath.readyReadStandardOutput.connect(lambda: self.new_buffer_to_hold_mame_path_info.write(self.new_process_for_mamepath.readAllStandardOutput().data()))
-        self.new_process_for_mamepath.readyReadStandardError.connect(lambda: self.new_process_for_mamepath.readAllStandardError())
-        self.new_process_for_mamepath.finished.connect(lambda: self.new_func_scan_game_files_only_check_if_file_exists_step_2(merged))
+        #self.new_process_for_mamepath.readyReadStandardError.connect(lambda: self.new_process_for_mamepath.readAllStandardError())
+        self.new_process_for_mamepath.finished.connect(self.new_func_scan_game_files_only_check_if_file_exists_step_2)
         self.new_process_for_mamepath.start(mame_path, command_list)
+    #
+    def new_func_scan_game_files_only_check_if_file_exists_step_2(self,):
 
-    def new_func_scan_game_files_only_check_if_file_exists_step_2(self,merged=False):
+        merged=self.new_variables_for_scan_roms["merged"]
+        mame_working_directory = self.new_variables_for_scan_roms["mame_working_directory"]
         
         self.new_buffer_to_hold_mame_path_info.seek(0)
         
@@ -1360,11 +1505,34 @@ class TheMainWindow(QMainWindow):
             if m :
                 rompath = m.group(1)
                 break
-        print("rompath")
+        print("rompath :")
         print(rompath)
 
-        # game id set
-        data =  misc_funcs.scan_game_files_only_check_if_file_exists_work(rompath, self.new_settings, merged)
+        self.new_thread_for_scan_roms = QThread(self)
+
+        self.new_worker_for_scan_roms = Worker_for_scan_game_files()
+        self.new_worker_for_scan_roms.new_func_set_values(mame_working_directory, rompath,  merged)
+
+        self.new_worker_for_scan_roms.moveToThread(self.new_thread_for_scan_roms)
+
+        self.new_thread_for_scan_roms.started.connect(self.new_worker_for_scan_roms.new_func_do_work)
+
+        self.new_worker_for_scan_roms.new_signal_for_failed.connect(self.new_func_scan_game_files_error)
+
+        self.new_worker_for_scan_roms.new_signal_for_finished.connect(self.new_func_scan_game_files_only_check_if_file_exists_step_3)
+        self.new_worker_for_scan_roms.new_signal_for_finished.connect(self.new_thread_for_scan_roms.quit)
+        self.new_worker_for_scan_roms.new_signal_for_finished.connect(self.new_worker_for_scan_roms.deleteLater)
+
+        self.new_thread_for_scan_roms.finished.connect(self.new_thread_for_scan_roms.deleteLater)
+
+        self.new_thread_for_scan_roms.start()
+    #
+    @Slot()
+    def new_func_scan_game_files_error(self):
+        QMessageBox.critical(self, "Error", "游戏 roms 扫描过程 貌似出错")
+    #
+    @Slot(set)
+    def new_func_scan_game_files_only_check_if_file_exists_step_3(self,data):
 
         # 更新数据
         ui_models.available_set = data
@@ -1385,9 +1553,6 @@ class TheMainWindow(QMainWindow):
             self.new_func_slot_for_receive_index(the_variables.index_id_1, the_variables.index_id_2)
 
         self.new_func_progressbar_hide()
-    ######
-    ######
-    ######
 
     # 游戏列表数量变化
     @Slot(int)
@@ -1398,7 +1563,10 @@ class TheMainWindow(QMainWindow):
         self.new_func_gamelist_number_changed(game_list_number)
     @Slot(int)
     def on_modelForTreeView_singalGamelistNumberChanged(self,game_list_number):
-        self.new_func_gamelist_number_changed(game_list_number)        
+        self.new_func_gamelist_number_changed(game_list_number)
+    @Slot(int)
+    def on_modelForTableView2LevelTreeLike_singalGamelistNumberChanged(self,game_list_number):
+        self.new_func_gamelist_number_changed(game_list_number)
     #
     @Slot(int)
     def new_func_gamelist_number_changed(self,game_list_number):
@@ -1421,8 +1589,8 @@ class TheMainWindow(QMainWindow):
                 qss_string.append(row_height_qss)
 
         # 字体
-        the_keys = ["all","gamelist",            "extra",     "extra_command",             "extra_command_english"]
-        the_prefix=["*",  "QTreeView,QTableView","QTextEdit", "QTextEdit#textedit_command","QTextEdit#textedit_command_english"]
+        the_keys = ["all","gamelist",            "extra",     "extra_command",             "extra_command_english",             "QHeaderView",]
+        the_prefix=["*",  "QTreeView,QTableView","QTextEdit", "QTextEdit#textedit_command","QTextEdit#textedit_command_english","QHeaderView",]
         for key,prefix in zip(the_keys,the_prefix):
             font_family = self.new_settings.value(f"font_family/{key}",)
             try:
@@ -1580,21 +1748,6 @@ class Worker_Test(QRunnable):
             time.sleep(1)
             print(n)
         self.new_signals.new_finished.emit()
-class Thread_for_parse_xml(QObject):
-    pass
-
-class Worker_parse_xml(QObject):
-    
-    new_finished = Signal(dict)
-    def __init__(self, xml_file,*args,**kwargs):
-        super().__init__(*args,**kwargs)
-        self.new_xml_file = xml_file
-
-    def new_func_do_work(self):
-            print("parse xml$$$$$$$$$$$$$$$$$")
-            
-            result = xml_parse_mame.main(self.new_xml_file)
-            self.new_finished.emit(result)
 
 class Worker_load_extra_text_to_database(QObject):
     new_signal_for_finished = Signal()
@@ -1654,10 +1807,72 @@ class Worker_load_extra_text_to_database(QObject):
 
         self.new_signal_for_finished.emit()
 
+class Worker_parse_xml(QObject):
+    
+    new_finished = Signal(dict)
+    new_signal_for_save_file_failed = Signal()
+    def __init__(self, xml_file,*args,**kwargs):
+        super().__init__(*args,**kwargs)
+        self.new_xml_file = xml_file
 
-class Controller(QObject):
-    new_thread_for_parse_xml = QThread()
 
+    def new_func_do_work(self):
+            try:
+                result = xml_parse_mame.main(self.new_xml_file)
+            except: 
+                result = dict()
+                exc_type, exc_value, exc_traceback = sys.exc_info()
+                print(traceback.print_exception(exc_type, exc_value, exc_traceback))
+
+            if result:
+                # 保存游戏列表数据
+                self.new_func_save_gamelist_data(result)
+
+            self.new_finished.emit(result)
+
+    def new_func_save_gamelist_data(self,data):
+        print()
+        print( "save gamelist data" )
+        filename = the_files.data_file
+
+        try:
+            file = open( filename , 'wb' )
+            pickle.dump( data , file )
+            file.close(  )
+            return 0
+        except:
+            print( "save pickle failed")
+            print( "save to ")
+            print( filename )
+            self.new_signal_for_save_file_failed.emit()
+
+class Worker_for_scan_game_files(QObject):
+    new_signal_for_finished = Signal(set)
+    new_signal_for_failed = Signal()
+
+    def __init__(self,*args,**kwargs):
+        super().__init__(*args,**kwargs)
+
+        self.new_rompath = ""
+        self.new_merged = False
+        self.new_mame_working_directory = ""
+
+    def new_func_set_values(self,mame_working_directory, rompath, merged=False):
+        self.new_mame_working_directory = mame_working_directory
+        self.new_rompath = rompath
+        self.new_merged = merged
+        
+    def new_func_do_work(self):
+        try:
+            data = misc_funcs.scan_game_files_only_check_if_file_exists_work(self.new_mame_working_directory,self.new_rompath, self.new_merged)
+        except:
+            data = set()
+            self.new_signal_for_failed.emit()
+
+            exc_type, exc_value, exc_traceback = sys.exc_info()
+            print(traceback.print_exception(exc_type, exc_value, exc_traceback))
+
+        self.new_signal_for_finished.emit(data)
 
 
 
@@ -1666,6 +1881,21 @@ def main():
     the_variables.locale_original = locale.setlocale(locale.LC_ALL)  # 获取当前语言区域
     print("locale :",the_variables.locale_original)
 
+    # 临时文件夹 the_files.folder_temporary
+    if os.path.isdir(the_files.folder_temporary):
+        pass
+    else:
+        if os.path.isfile(the_files.folder_temporary):
+            try:
+                os.remove(the_files.folder_temporary)
+            except:
+                pass
+        try:
+            os.makedirs(the_files.folder_temporary)
+        except:
+            pass
+
+    
     app = QApplication(sys.argv)
     window = TheMainWindow()
     window.show()

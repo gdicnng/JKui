@@ -89,7 +89,7 @@ default_value = {
     #"extra_image_zip_path/image_18": "warning.zip",       
 
     "extra/history":         r"dats\history.xml",
-    "extra/history_dat":     r"dats\history.dat",
+    "extra/history_dat":     r"history.dat",
     "extra/gameinit":        r"dats\gameinit.dat",
     "extra/mameinfo":        r"dats\mameinfo.dat",
     "extra/messinfo":        r"dats\messinfo.dat",

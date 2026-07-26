@@ -17,7 +17,8 @@ available_file = os.path.join(folder_temporary ,"cache_available.pickle")
 
 extra_database_file = os.path.join(folder_temporary ,"extra.db") 
 
-#internal_qss_file = os.path.join(folder_temporary, "internal.qss")
+script_folder = os.path.join(folder_temporary, "emu")
+script_by_source_folder = os.path.join(folder_temporary, "emu_source")
 
 #文件的二进制数据
 icon_for_mainwindow = pkgutil.get_data("my_resource", "icon_for_mainwindow.png")
