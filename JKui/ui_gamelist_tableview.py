@@ -20,6 +20,11 @@ class My_Table(QTableView):
             # 鼠标移动，记录行号
             # 鼠标释放，重置为 -1
 
+        # 获取水平表头，并设置上下文菜单策略
+        header = self.horizontalHeader()
+        header.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
+        header.customContextMenuRequested.connect(self.new_func_show_header_context_menu)
+
         # 进入编辑状态 方式
         self.setEditTriggers(QAbstractItemView.CurrentChanged)
 
@@ -80,6 +85,34 @@ class My_Table(QTableView):
         self.setObjectName("table_view_1_level")
         self.setModel(ui_models.Model_for_table_view(self))
         self.model().new_signal_time_for_choose_remember_game.connect(self.new_func_scrollto_to_last_game)
+
+    def new_func_show_header_context_menu(self, pos):
+        """在表头位置显示右键菜单"""
+        menu = QMenu(self)
+        header = self.horizontalHeader()
+        
+        # 遍历所有列
+        for col in range(self.model().columnCount()):
+            # 获取列名
+            col_name = self.model().headerData(col, Qt.Orientation.Horizontal)
+            # 创建可勾选的QAction
+            action = QAction(col_name, self, checkable=True)
+            # 根据当前列的可见性设置初始勾选状态
+            action.setChecked(not header.isSectionHidden(col))
+            # 为每个action绑定切换列可见性的槽函数
+            action.toggled.connect(lambda checked, c=col: self.new_func_toggle_column_visibility(c, checked))
+            menu.addAction(action)
+        
+        # 在鼠标位置显示菜单
+        menu.exec(header.mapToGlobal(pos))
+
+    def new_func_toggle_column_visibility(self, column, visible):
+        """切换列的可见性"""
+        if visible:
+            self.showColumn(column)
+        else:
+            self.hideColumn(column)
+
 
     # 右键 菜单
     def new_func_create_context_menu(self,):
@@ -155,14 +188,35 @@ class My_Table(QTableView):
         self.new_action_delete_selected_items_from_current_table.triggered.connect(self.new_func_context_menu_delete_selected_items_from_current_table)
         self.new_context_menu.addAction(self.new_action_delete_selected_items_from_current_table)
         # 多选（勾选），从选中列表删除
-        self.new_action_delete_selected_items_from_index=QAction("多选（勾选），从选中列表删除", self)
+        self.new_action_delete_selected_items_from_index=QAction("多选（勾选），从其它列表删除", self)
         self.new_action_delete_selected_items_from_index.triggered.connect(self.new_func_context_menu_delete_selected_items_from_index)
         self.new_context_menu.addAction(self.new_action_delete_selected_items_from_index)
         # 多选（勾选），添加到其它目录
         self.new_action_add_selected_items_to_index=QAction("多选（勾选），添加到其它目录", self)
         self.new_action_add_selected_items_to_index.triggered.connect(self.new_func_context_menu_add_selected_items_to_index)
         self.new_context_menu.addAction(self.new_action_add_selected_items_to_index)
-
+        # 多选（勾选），选择同类项（清除原有选项内容，选择本列表中此列值相同的项目）
+        self.new_action_select_same_type_items=QAction("多选（勾选），选择同类项（清除原有选项内容，选择本列表中此列值相同的项目）", self)
+        self.new_action_select_same_type_items.triggered.connect(self.new_func_context_menu_select_same_type_items)
+        self.new_context_menu.addAction(self.new_action_select_same_type_items)
+        # 其它
+        self.new_menu_current_gamelist_other_options = self.new_context_menu.addMenu("当前列表，其他")
+        # 当前列表，为所有克隆版本，补全其主版本
+        action_add_parent_game=QAction("当前列表，为所有克隆版本，补全其主版本", self)
+        action_add_parent_game.triggered.connect(self.model().new_func_add_parent_game)
+        self.new_menu_current_gamelist_other_options.addAction(action_add_parent_game)
+        # 当前列表，为所有主版本，补全其克隆版本
+        action_add_clone_game=QAction("当前列表，为所有主版本，补全其克隆版本", self)
+        action_add_clone_game.triggered.connect(self.model().new_func_add_colne_game)
+        self.new_menu_current_gamelist_other_options.addAction(action_add_clone_game)
+        # 当前列表，删除所有主版本
+        action_delete_parent_game=QAction("当前列表，删除所有主版本", self)
+        action_delete_parent_game.triggered.connect(self.model().new_func_delete_parent_game)
+        self.new_menu_current_gamelist_other_options.addAction(action_delete_parent_game)
+        # 当前列表，删除所有克隆版本
+        action_delete_clone_game=QAction("当前列表，删除所有克隆版本", self)
+        action_delete_clone_game.triggered.connect(self.model().new_func_delete_clone_game)
+        self.new_menu_current_gamelist_other_options.addAction(action_delete_clone_game)
 
         self.new_context_menu.addSeparator()
         ############
@@ -188,24 +242,33 @@ class My_Table(QTableView):
             self.new_action_delete_selected_items_from_index.setEnabled(False)
             self.new_action_add_selected_items_to_index.setEnabled(False)
             self.new_action_delete_selected_items_from_current_table.setEnabled(False)
+            self.new_action_select_same_type_items.setEnabled(False)
+            #
+            self.new_menu_current_gamelist_other_options.setEnabled(False)
+            #
+            #
+            if ui_models.multi_selection_mode:
+                self.new_action_select_same_type_items.setEnabled(True)
             #
             if ui_models.index_edit_mode:
                 if ui_models.editable_index_files:
                     # 有可编辑目录
                     self.new_action_add_current_item_to_index.setEnabled(True)
-                    if ui_models.the_selected_items:
+
+                    if ui_models.multi_selection_mode and ui_models.the_selected_items:
                         self.new_action_add_selected_items_to_index.setEnabled(True)
                         self.new_action_delete_selected_items_from_index.setEnabled(True)
-                    
+
                     # 当前表格 在 可编辑目录 中
                     id_1 = self.model().new_remember_index_id_1
                     if id_1 in ui_models.editable_index_files:
                         print(id_1)
                         self.new_action_delete_selected_item_from_current_table.setEnabled(True)
-                        if ui_models.the_selected_items:
+
+                        self.new_menu_current_gamelist_other_options.setEnabled(True)
+
+                        if ui_models.multi_selection_mode and ui_models.the_selected_items:
                             self.new_action_delete_selected_items_from_current_table.setEnabled(True)
-
-
 
             self.new_context_menu.exec(e.globalPos())
     
@@ -374,6 +437,11 @@ class My_Table(QTableView):
                 # 反选
                 self.model().new_func_select_reverse()
 
+        # ctrl + B
+        elif event.key() == Qt.Key_B:
+            if event.modifiers() == Qt.ControlModifier:
+                self.new_func_context_menu_bios_selector()
+
         # return
         elif event.key() == Qt.Key_Return:
             current_index = self.currentIndex()
@@ -506,14 +574,17 @@ class My_Table(QTableView):
         
         if not current_index.isValid():
             return
+
+        selected_index_list = self.selectionModel().selectedIndexes()
+        if current_index in selected_index_list:
         
-        game_id, game_info = self.model().new_func_get_id_and_item_by_index(current_index)
-        
-        if not game_id:
-            return
-        
-        print(game_id)
-        self.parentWidget().new_func_mame_show_bios_selector( game_id,)
+            game_id, game_info = self.model().new_func_get_id_and_item_by_index(current_index)
+            
+            if not game_id:
+                return
+            
+            print(game_id)
+            self.parentWidget().new_func_mame_show_bios_selector( game_id,)
 
     def new_func_context_menu_script_selector(self,):
         current_index = self.currentIndex()
@@ -591,6 +662,18 @@ class My_Table(QTableView):
 
         # 多选模式，删除
         self.model().new_func_remove_selected_items()
+
+    def new_func_context_menu_select_same_type_items(self,):
+        if not ui_models.multi_selection_mode:
+            return
+
+        # 单选模式，添加当前项到其他索引
+        current_index = self.currentIndex()
+        selected_index_list = self.selectionModel().selectedIndexes()
+        if current_index in selected_index_list:
+            # 多选模式，选择同类项
+            self.model().new_func_select_same_type_items(current_index)
+
 
 class My_Table_for_2_level(My_Table):
     def __init__(self,*args,**kwargs ):

@@ -13,6 +13,7 @@ import the_variables
 import ui_small_windows
 import the_files
 import ui_index
+import ui_gamelist_listview
 
 
 
@@ -25,6 +26,9 @@ class TheCentralWidget(QStackedWidget):
 
         self.new_signal_for_id_change.connect(self.new_slot_record_game_id)
 
+        self.new_flag_search = False
+        self.new_search_content = None
+
         ## QSortFilterProxyModel ，这东西太卡了,不能用
 
         ####
@@ -32,6 +36,7 @@ class TheCentralWidget(QStackedWidget):
         self.new_ui_gamelist_tableview = ui_gamelist_tableview.My_Table(self)
         self.addWidget(self.new_ui_gamelist_tableview)
 
+        ####
         # tableview 2 level
         self.new_ui_gamelist_tableview_2_level = ui_gamelist_tableview.My_Table_for_2_level(self)
         self.addWidget(self.new_ui_gamelist_tableview_2_level)
@@ -47,8 +52,11 @@ class TheCentralWidget(QStackedWidget):
         self.new_ui_gamelist_treeview = ui_gamelist_treeview.My_Tree_View(self)
         self.addWidget(self.new_ui_gamelist_treeview)
 
-        self.new_flag_search = False
-        self.new_search_content = None
+        ####
+        # list view icon
+        self.new_ui_gamelist_icon_table = ui_gamelist_listview.My_Icon_Table(self)
+        self.addWidget(self.new_ui_gamelist_icon_table)
+
 
 
         for table in self.children():
@@ -85,6 +93,9 @@ class TheCentralWidget(QStackedWidget):
     #
     def new_func_show_treeview(self,):
         self.new_func_show_table(self.new_ui_gamelist_treeview)
+
+    def new_func_show_icon_table(self,):
+        self.new_func_show_table(self.new_ui_gamelist_icon_table)
 
     def new_func_refresh_layoutchange(self,):
         widget = self.currentWidget()
@@ -158,7 +169,7 @@ class TheCentralWidget(QStackedWidget):
         the_object_name = settings.value("current_table")
 
         for widget in self.children():
-            if  isinstance(widget,QTableView) or isinstance(widget,QTreeView):
+            if  isinstance(widget,QTableView) or isinstance(widget,QTreeView) or isinstance(widget,QListView):
                 object_name = widget.objectName()
                 if object_name == the_object_name:
                     self.setCurrentWidget(widget)

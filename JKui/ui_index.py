@@ -35,11 +35,36 @@ class My_index_table(QTreeView):
         action_collapse_all=QAction("折叠所有项", self)
         action_collapse_all.triggered.connect(self.collapseAll)
         self.new_context_menu.addAction(action_collapse_all)
-    
+
+        self.new_action_pin_to_top=QAction("置顶", self)
+        self.new_action_pin_to_top.triggered.connect(self.new_func_pin_to_top)
+        self.new_context_menu.addAction(self.new_action_pin_to_top)
+
+        self.new_action_cancel_pin_to_top=QAction("取消置顶", self)
+        self.new_action_cancel_pin_to_top.triggered.connect(self.new_func_cancel_pin_to_top)
+        self.new_context_menu.addAction(self.new_action_cancel_pin_to_top)
 
     def contextMenuEvent(self,e):
         index=self.indexAt(e.pos())
         if index.isValid():
+            self.new_action_pin_to_top.setEnabled(False)
+            self.new_action_cancel_pin_to_top.setEnabled(False)
+
+            internal_id = index.internalId()
+            if internal_id == 1: # 第一层
+
+                id_1,id_2 = self.model().new_func_get_index_id_by_index(index)
+                if id_1 in ui_models.top_index_list:
+                    self.new_action_cancel_pin_to_top.setEnabled(True)
+
+                    if ui_models.top_index_list.index(id_1) != 0:
+                        self.new_action_pin_to_top.setEnabled(True)
+                else:
+                    self.new_action_pin_to_top.setEnabled(True)
+
+
+
+
             self.new_context_menu.exec(e.globalPos())
     
     def new_func_do_nothing(self,):
@@ -92,6 +117,32 @@ class My_index_table(QTreeView):
             self.selectionModel().select(index,QItemSelectionModel.Select)
             if scroll_to:
                 self.scrollTo(index,QAbstractItemView.PositionAtCenter)
+
+    def new_func_pin_to_top(self,):
+        print("pin to top")
+        current_index = self.currentIndex()
+        if current_index.isValid():
+            id_1,id_2 = self.model().new_func_get_index_id_by_index(current_index)
+
+            if id_1 in ui_models.top_index_list:
+                # 已经是置顶了，但还不是最顶部，与最顶部交换位置
+                list_index = ui_models.top_index_list.index(id_1)
+                if list_index != 0:
+                    ui_models.top_index_list[0],ui_models.top_index_list[list_index] = ui_models.top_index_list[list_index],ui_models.top_index_list[0]
+            else:
+                # 未置顶，直接插入最顶部
+                ui_models.top_index_list.insert(0,id_1)
+
+            self.model().new_func_rebuild_index()
+
+    def new_func_cancel_pin_to_top(self,):
+        print("cancel pin to top")
+        current_index = self.currentIndex()
+        if current_index.isValid():
+            id_1,id_2 = self.model().new_func_get_index_id_by_index(current_index)
+            if id_1 in ui_models.top_index_list:
+                ui_models.top_index_list.remove(id_1)
+            self.model().new_func_rebuild_index()
 
 class Line_editor_for_search(QLineEdit):
     new_signal_for_press_enter = Signal()

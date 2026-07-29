@@ -80,6 +80,14 @@ icon_not_have_pixmap = None
 
 icon_extra_resource = dict()
 # 第三方图标，全部读取到此
+# the_variables.icon_size # 列表图标大小，当时在 the_variables 文件里定义的
+icon_size_for_icon_table = 32 # 图标视图 的 图标大小
+icon_red_pixmap_for_icon_table = None
+icon_green_pixmap_for_icon_table = None
+icon_yellow_pixmap_for_icon_table = None
+icon_black_pixmap_for_icon_table = None
+icon_not_have_pixmap_for_icon_table = None
+
 
 # new_table_type 
 # 变量记录在 model 里 , new_table_type
@@ -153,9 +161,14 @@ def load_gamelist_translation_file(file_path,clear_old_data=False):
 
 def load_and_resize_internal_icon():
     global icon_red_pixmap, icon_green_pixmap, icon_yellow_pixmap, icon_black_pixmap,icon_not_have_pixmap
+    global icon_red_pixmap_for_icon_table, icon_green_pixmap_for_icon_table, icon_yellow_pixmap_for_icon_table
+    global icon_black_pixmap_for_icon_table,icon_not_have_pixmap_for_icon_table
 
     icon_size =QSize(the_variables.icon_size,the_variables.icon_size)
+    icon_size_2 = QSize(icon_size_for_icon_table,icon_size_for_icon_table)
+
     icon_red_pixmap = QPixmap()
+    
     try:
         icon_red_pixmap.loadFromData(the_files.icon_red)
         if (icon_red_pixmap.width() != the_variables.icon_size) or (icon_red_pixmap.height() != the_variables.icon_size):
@@ -166,7 +179,7 @@ def load_and_resize_internal_icon():
                 )
     except:
         pass
-        
+
     icon_green_pixmap = QPixmap()
     try:
         icon_green_pixmap.loadFromData(the_files.icon_green)
@@ -215,6 +228,67 @@ def load_and_resize_internal_icon():
     except:
         pass
 
+    ###
+
+    icon_red_pixmap_for_icon_table = QPixmap()
+    try:
+        icon_red_pixmap_for_icon_table.loadFromData(the_files.icon_red)
+        if (icon_red_pixmap_for_icon_table.width() != icon_size_for_icon_table) or (icon_red_pixmap_for_icon_table.height() != icon_size_for_icon_table):
+            icon_red_pixmap_for_icon_table = icon_red_pixmap_for_icon_table.scaled(
+                icon_size_for_icon_table,icon_size_for_icon_table,                  # 目标大小
+                Qt.KeepAspectRatio,
+                Qt.SmoothTransformation
+                )
+    except:
+        pass
+
+    icon_green_pixmap_for_icon_table = QPixmap()
+    try:
+        icon_green_pixmap_for_icon_table.loadFromData(the_files.icon_green)
+        if (icon_green_pixmap_for_icon_table.width() != icon_size_for_icon_table) or (icon_green_pixmap_for_icon_table.height() != icon_size_for_icon_table):
+            icon_green_pixmap_for_icon_table = icon_green_pixmap_for_icon_table.scaled(
+                icon_size_for_icon_table,icon_size_for_icon_table,                  # 目标大小
+                Qt.KeepAspectRatio,
+                Qt.SmoothTransformation
+                )
+    except:
+        pass
+
+    icon_yellow_pixmap_for_icon_table = QPixmap()
+    try:
+        icon_yellow_pixmap_for_icon_table.loadFromData(the_files.icon_yellow)
+        if (icon_yellow_pixmap_for_icon_table.width() != icon_size_for_icon_table) or (icon_yellow_pixmap_for_icon_table.height() != icon_size_for_icon_table):
+            icon_yellow_pixmap_for_icon_table = icon_yellow_pixmap_for_icon_table.scaled(
+                icon_size_for_icon_table,icon_size_for_icon_table,                  # 目标大小
+                Qt.KeepAspectRatio,
+                Qt.SmoothTransformation
+                )
+    except:
+        pass
+
+    icon_black_pixmap_for_icon_table = QPixmap()
+    try:
+        icon_black_pixmap_for_icon_table.loadFromData(the_files.icon_black)
+        if (icon_black_pixmap_for_icon_table.width() != icon_size_for_icon_table) or (icon_black_pixmap_for_icon_table.height() != icon_size_for_icon_table):
+            icon_black_pixmap_for_icon_table = icon_black_pixmap_for_icon_table.scaled(
+                icon_size_for_icon_table,icon_size_for_icon_table,                  # 目标大小
+                Qt.KeepAspectRatio,
+                Qt.SmoothTransformation
+                )
+    except:
+        pass
+
+    icon_not_have_pixmap_for_icon_table = QPixmap()
+    try:
+        icon_not_have_pixmap_for_icon_table.loadFromData(the_files.icon_not_have)
+        if (icon_not_have_pixmap_for_icon_table.width() != icon_size_for_icon_table) or (icon_not_have_pixmap_for_icon_table.height() != icon_size_for_icon_table):
+            icon_not_have_pixmap_for_icon_table = icon_not_have_pixmap_for_icon_table.scaled(
+                icon_size_for_icon_table,icon_size_for_icon_table,                  # 目标大小
+                Qt.KeepAspectRatio,
+                Qt.SmoothTransformation
+                )
+    except:
+        pass
 
 def update_some_value():
     global icon_column_index
@@ -297,14 +371,14 @@ index_has_children_backup = dict()
 editable_index_list=[]
 editable_index_has_children = dict()
 
-def rebuild_index(top_index_list=None):
+# 置顶目录
+top_index_list = []
+
+def rebuild_index():
     # 第一层 index_list : 
     #   主目录 id
     # 第二层 index_has_children
     #   主目录 id : 子目录 id 列表
-
-    if top_index_list is None:
-        top_index_list = []
     
     global index_list
     global index_has_children
@@ -498,6 +572,7 @@ def get_string_for_statusbar(game_id):
 
         return " | ".join(temp_list)
 
+# mameinfo.dat 里需要用到
 def get_sourcefile(game_id):
     sourcefile = ""
 
@@ -550,11 +625,21 @@ def func_for_search(search_string,search_object_list=None,use_re=False,ignore_ca
         #return next(filter(lambda column_text:p.search(column_text), column_text_list), False)
         return any( map(lambda column_text:p.search(column_text), column_text_list) )
 
+    # search_columns,多个时，operator.itemgetter 返回的是一个列表
+    # search_columns,一个时，operator.itemgetter 返回的是一个值，不如不用它了
     if flag_search_all:
+        # 每个搜索单元为一个列表，元素为 str
         for iteralble_object in  search_object_list:
             temp_result_list = list( filter( lambda game_id:first_true( machine_dict[game_id] ) , iteralble_object ) ) 
             result_list.extend(temp_result_list)
+    elif len(search_columns)==1:
+        # 每个搜索单元为 str
+        column_index = search_columns[0]
+        for iteralble_object in  search_object_list:
+            temp_result_list = list( filter( lambda game_id:p.search( machine_dict[game_id][column_index] ) , iteralble_object ) ) 
+            result_list.extend(temp_result_list)
     else:
+        # 每个搜索单元为一个列表，元素为 str
         search_columns = sorted(set(search_columns))
         get_column_text_list = operator.itemgetter(*search_columns)
         for iteralble_object in  search_object_list:
@@ -562,6 +647,19 @@ def func_for_search(search_string,search_object_list=None,use_re=False,ignore_ca
             result_list.extend(temp_result_list)
 
     re.purge()
+    return result_list
+
+def func_for_find_same_value_in_same_colmun(value,column,search_object_list=None):
+    if search_object_list is None:
+        return []
+
+    result_list = []
+
+    column_index = column
+    for iteralble_object in  search_object_list:
+        temp_result_list = list( filter( lambda game_id: value ==  machine_dict[game_id][column_index] , iteralble_object ) ) 
+        result_list.extend(temp_result_list)
+
     return result_list
 
 def func_for_index_search(search_string,use_re=False,ignore_case=True,):
@@ -605,8 +703,6 @@ def func_for_index_search(search_string,use_re=False,ignore_case=True,):
                     
     return new_list,new_list_have_children
 
-
-# test
 
 def get_icon_for_gamelist_table(game_id):
     #use_icon_not_have = False
@@ -655,7 +751,6 @@ def get_icon_for_gamelist_table(game_id):
 
     return the_icon
 
-
 def get_icon_for_gamelist_table_fake_2_level(game_id):
     #use_icon_not_have = False
     #use_icon_extra_resource = False
@@ -701,6 +796,52 @@ def get_icon_for_gamelist_table_fake_2_level(game_id):
             painter.drawPixmap(the_variables.icon_size, 0,icon_not_have_pixmap)
     painter.end()
     return new_icon
+
+def get_icon_for_icon_table(game_id):
+    #use_icon_not_have = False
+    #use_icon_extra_resource = False
+
+    value = machine_dict[ game_id ] [ icon_column_index ]
+
+    # default icon
+    if value == "good":
+        the_icon =  icon_green_pixmap_for_icon_table
+    elif value == "imperfect":
+        the_icon =  icon_yellow_pixmap_for_icon_table
+    elif value == "preliminary":
+        the_icon =  icon_red_pixmap_for_icon_table
+    else:
+        the_icon =  icon_black_pixmap_for_icon_table
+
+    # 使用额外 icon 资源包
+    if game_id in icon_extra_resource:
+        try:
+            user_icon = QPixmap()
+            user_icon.loadFromData(icon_extra_resource[game_id])
+            the_icon = user_icon
+            if (user_icon.width() != icon_size_for_icon_table) or (user_icon.height() != icon_size_for_icon_table):
+                scaled_pixmap = user_icon.scaled(
+                    icon_size_for_icon_table,icon_size_for_icon_table,# 目标大小
+                    Qt.KeepAspectRatio,
+                    Qt.SmoothTransformation
+                    )
+                the_icon = scaled_pixmap
+        except:
+            pass
+ 
+    if the_variables.use_icon_not_have:
+        if game_id not in available_set:
+            size = 	QSize(icon_size_for_icon_table ,icon_size_for_icon_table)
+            new_icon = QPixmap(size)
+            new_icon.fill(Qt.transparent)
+            painter = QPainter()
+            painter.begin(new_icon)
+            painter.drawPixmap(0, 0,the_icon)
+            painter.drawPixmap(0, 0,icon_not_have_pixmap_for_icon_table)
+            painter.end()
+            return new_icon
+
+    return the_icon
 
 
 def get_sort_func(column=None,reverse=None):# return function or None
@@ -983,9 +1124,6 @@ class Model_for_table_view(QAbstractTableModel):
         # 数量信号
         self.new_func_numbers_changed()
 
-        # 排序
-        self.new_func_for_sort()
-
         self.endResetModel()
 
         # 发送信号
@@ -1106,6 +1244,146 @@ class Model_for_table_view(QAbstractTableModel):
             index_first = self.index(0,0)
             index_last  = self.index(len(self.new_game_list_to_show)-1,0)
             self.dataChanged.emit(index_first, index_last, [Qt.CheckStateRole])            
+
+    def new_func_select_same_type_items(self,index):
+        if not multi_selection_mode:
+            return
+
+        if not index.isValid():
+            return
+
+        column = index.column()
+        search_columns = tuple([column])
+
+        cell_data = self.data(index,Qt.DisplayRole)
+
+        reuslt = func_for_find_same_value_in_same_colmun(
+                cell_data,
+                column,
+                search_object_list=[self.new_game_list_to_show],
+                )
+
+        the_selected_items.clear()
+        the_selected_items.update(reuslt)
+
+        if self.new_game_list_to_show:
+            index_first = self.index(0,0)
+            index_last  = self.index(len(self.new_game_list_to_show)-1,0)
+            self.dataChanged.emit(index_first, index_last, [Qt.CheckStateRole])
+
+    def new_func_add_parent_game(self):
+        
+        if not index_edit_mode:
+            return
+
+        id_1,id_2 = self.new_remember_index_id_1,self.new_remember_index_id_2
+
+        if not id_1:
+            return
+        
+        if id_1 not in editable_index_files:
+            return
+
+        
+        result = []
+        for game_id in self.new_game_list_to_show:
+            result.append(game_id)
+            if game_id in clone_set:
+                result.append(clone_to_parent[game_id])
+
+        result = set(result)
+
+        new_games = result - set(self.new_game_list_to_show)
+
+        if new_games :
+
+            misc_funcs.add_items_to_external_index(new_games,id_1,id_2)
+
+            self.new_signal_need_reload_gamelist.emit()
+
+    def new_func_add_colne_game(self):
+        if not index_edit_mode:
+            return
+
+        id_1,id_2 = self.new_remember_index_id_1,self.new_remember_index_id_2
+
+        if not id_1:
+            return
+        
+        if id_1 not in editable_index_files:
+            return
+
+        
+        result = []
+        for game_id in self.new_game_list_to_show:
+            result.append(game_id)
+            if game_id in parent_to_clone:
+                result.extend(parent_to_clone[game_id])
+
+        result = set(result)
+
+        new_games = result - set(self.new_game_list_to_show)
+
+        if new_games :
+
+            misc_funcs.add_items_to_external_index(new_games,id_1,id_2)
+
+            self.new_signal_need_reload_gamelist.emit()
+
+    def new_func_delete_parent_game(self):
+        
+        if not index_edit_mode:
+            return
+
+        id_1,id_2 = self.new_remember_index_id_1,self.new_remember_index_id_2
+
+        if not id_1:
+            return
+        
+        if id_1 not in editable_index_files:
+            return
+
+        
+        result = []
+        for game_id in self.new_game_list_to_show:
+            if game_id in parent_set:
+                result.append(game_id)
+
+        result = set(result)
+
+        if result :
+
+            misc_funcs.delect_items_from_external_index(result,id_1,id_2)
+
+            self.new_signal_need_reload_gamelist.emit()
+
+    def new_func_delete_clone_game(self):
+        
+        if not index_edit_mode:
+            return
+
+        id_1,id_2 = self.new_remember_index_id_1,self.new_remember_index_id_2
+
+        if not id_1:
+            return
+        
+        if id_1 not in editable_index_files:
+            return
+
+        
+        result = []
+        for game_id in self.new_game_list_to_show:
+            if game_id in clone_set:
+                result.append(game_id)
+
+        result = set(result)
+
+        if result :
+
+            misc_funcs.delect_items_from_external_index(result,id_1,id_2)
+
+            self.new_signal_need_reload_gamelist.emit()
+
 
 class Model_for_table_view_2_level(QAbstractTableModel):
     
@@ -1560,6 +1838,146 @@ class Model_for_table_view_2_level(QAbstractTableModel):
             index_first = self.index(0,0)
             index_last  = self.index(len(self.new_game_list_to_show)-1,0)
             self.dataChanged.emit(index_first, index_last, [Qt.CheckStateRole])       
+
+    def new_func_select_same_type_items(self,index):
+        if not multi_selection_mode:
+            return
+
+        if not index.isValid():
+            return
+
+        column = index.column()
+        search_columns = tuple([column])
+
+        cell_data = self.data(index,Qt.DisplayRole)
+
+        reuslt = func_for_find_same_value_in_same_colmun(
+                cell_data,
+                column,
+                search_object_list=[self.new_game_list_to_show],
+                )
+
+        the_selected_items.clear()
+        the_selected_items.update(reuslt)
+
+        if self.new_game_list_to_show:
+            index_first = self.index(0,0)
+            index_last  = self.index(len(self.new_game_list_to_show)-1,0)
+            self.dataChanged.emit(index_first, index_last, [Qt.CheckStateRole])
+
+    def new_func_add_parent_game(self):
+        
+        if not index_edit_mode:
+            return
+
+        id_1,id_2 = self.new_remember_index_id_1,self.new_remember_index_id_2
+
+        if not id_1:
+            return
+        
+        if id_1 not in editable_index_files:
+            return
+
+        
+        result = []
+        for game_id in self.new_game_list_to_show:
+            result.append(game_id)
+            if game_id in clone_set:
+                result.append(clone_to_parent[game_id])
+
+        result = set(result)
+
+        new_games = result - set(self.new_game_list_to_show)
+
+        if new_games :
+
+            misc_funcs.add_items_to_external_index(new_games,id_1,id_2)
+
+            self.new_signal_need_reload_gamelist.emit()
+
+    def new_func_add_colne_game(self):
+        if not index_edit_mode:
+            return
+
+        id_1,id_2 = self.new_remember_index_id_1,self.new_remember_index_id_2
+
+        if not id_1:
+            return
+        
+        if id_1 not in editable_index_files:
+            return
+
+        
+        result = []
+        for game_id in self.new_game_list_to_show:
+            result.append(game_id)
+            if game_id in parent_to_clone:
+                result.extend(parent_to_clone[game_id])
+
+        result = set(result)
+
+        new_games = result - set(self.new_game_list_to_show)
+
+        if new_games :
+
+            misc_funcs.add_items_to_external_index(new_games,id_1,id_2)
+
+            self.new_signal_need_reload_gamelist.emit()
+
+    def new_func_delete_parent_game(self):
+        
+        if not index_edit_mode:
+            return
+
+        id_1,id_2 = self.new_remember_index_id_1,self.new_remember_index_id_2
+
+        if not id_1:
+            return
+        
+        if id_1 not in editable_index_files:
+            return
+
+        
+        result = []
+        for game_id in self.new_game_list_to_show:
+            if game_id in parent_set:
+                result.append(game_id)
+
+        result = set(result)
+
+        if result :
+
+            misc_funcs.delect_items_from_external_index(result,id_1,id_2)
+
+            self.new_signal_need_reload_gamelist.emit()
+
+    def new_func_delete_clone_game(self):
+        
+        if not index_edit_mode:
+            return
+
+        id_1,id_2 = self.new_remember_index_id_1,self.new_remember_index_id_2
+
+        if not id_1:
+            return
+        
+        if id_1 not in editable_index_files:
+            return
+
+        
+        result = []
+        for game_id in self.new_game_list_to_show:
+            if game_id in clone_set:
+                result.append(game_id)
+
+        result = set(result)
+
+        if result :
+
+            misc_funcs.delect_items_from_external_index(result,id_1,id_2)
+
+            self.new_signal_need_reload_gamelist.emit()
+
 
 class Model_for_table_view_2_level_tree_like(QAbstractTableModel):
     
@@ -2145,6 +2563,134 @@ class Model_for_table_view_2_level_tree_like(QAbstractTableModel):
             index_last  = self.index(len(self.new_game_list_to_show)-1,0)
             self.dataChanged.emit(index_first, index_last, [Qt.CheckStateRole])       
 
+    def new_func_select_same_type_items(self,index):
+        if not multi_selection_mode:
+            return
+
+        if not index.isValid():
+            return
+
+        column = index.column()
+        search_columns = tuple([column])
+
+        cell_data = self.data(index,Qt.DisplayRole)
+
+        reuslt = func_for_find_same_value_in_same_colmun(
+                cell_data,
+                column,
+                search_object_list=[self.new_parent_set,self.new_clone_set],
+                )
+
+        the_selected_items.clear()
+        the_selected_items.update(reuslt)
+
+        if self.new_game_list_to_show:
+            index_first = self.index(0,0)
+            index_last  = self.index(len(self.new_game_list_to_show)-1,0)
+            self.dataChanged.emit(index_first, index_last, [Qt.CheckStateRole])
+
+    def new_func_add_parent_game(self):
+        
+        if not index_edit_mode:
+            return
+
+        id_1,id_2 = self.new_remember_index_id_1,self.new_remember_index_id_2
+
+        if not id_1:
+            return
+        
+        if id_1 not in editable_index_files:
+            return
+
+        temp_set = self.new_parent_set | self.new_clone_set
+        result = []
+        for game_id in temp_set:
+            result.append(game_id)
+            if game_id in clone_set:
+                result.append(clone_to_parent[game_id])
+
+        result = set(result)
+
+        new_games = result - temp_set
+
+        if new_games :
+
+            misc_funcs.add_items_to_external_index(new_games,id_1,id_2)
+
+            self.new_signal_need_reload_gamelist.emit()
+
+    def new_func_add_colne_game(self):
+        if not index_edit_mode:
+            return
+
+        id_1,id_2 = self.new_remember_index_id_1,self.new_remember_index_id_2
+
+        if not id_1:
+            return
+        
+        if id_1 not in editable_index_files:
+            return
+
+        temp_set = self.new_parent_set | self.new_clone_set
+        result = []
+        for game_id in temp_set:
+            result.append(game_id)
+            if game_id in parent_to_clone:
+                result.extend(parent_to_clone[game_id])
+
+        result = set(result)
+
+        new_games = result - temp_set
+
+        if new_games :
+
+            misc_funcs.add_items_to_external_index(new_games,id_1,id_2)
+
+            self.new_signal_need_reload_gamelist.emit()
+
+    def new_func_delete_parent_game(self):
+        
+        if not index_edit_mode:
+            return
+
+        id_1,id_2 = self.new_remember_index_id_1,self.new_remember_index_id_2
+
+        if not id_1:
+            return
+        
+        if id_1 not in editable_index_files:
+            return
+
+        result = self.new_parent_set
+
+        if result :
+
+            misc_funcs.delect_items_from_external_index(result,id_1,id_2)
+
+            self.new_signal_need_reload_gamelist.emit()
+
+    def new_func_delete_clone_game(self):
+        
+        if not index_edit_mode:
+            return
+
+        id_1,id_2 = self.new_remember_index_id_1,self.new_remember_index_id_2
+
+        if not id_1:
+            return
+        
+        if id_1 not in editable_index_files:
+            return
+
+        result = self.new_clone_set
+
+        if result :
+
+            misc_funcs.delect_items_from_external_index(result,id_1,id_2)
+
+            self.new_signal_need_reload_gamelist.emit()
+
+
 class Model_for_tree_view(QAbstractItemModel):
     singalGamelistNumberChanged = Signal(int)
     new_signal_time_for_choose_remember_game = Signal() # 发信号，后续看是否需要定位到上次选中的游戏
@@ -2705,6 +3251,166 @@ class Model_for_tree_view(QAbstractItemModel):
             # 重置列表
             self.new_signal_need_reload_gamelist.emit()
     #
+
+class Model_for_icon(QAbstractListModel): # QAbstractItemModel
+    singalGamelistNumberChanged = Signal(int)
+    new_signal_time_for_choose_remember_game = Signal() 
+    new_signal_need_reload_gamelist = Signal()
+
+    def __init__(self,*args,**kwargs):
+        super().__init__(*args,**kwargs)
+        self.setObjectName("modelForIcon")
+
+        self.new_game_list_to_show = []
+
+        self.new_remember_index_id_1 = ""
+        self.new_remember_index_id_2 = ""
+        self.new_search_flag = False
+
+    def data(self, index, role):
+        if role == Qt.DisplayRole:
+            return self.new_game_list_to_show[index.row()]
+
+        elif role == Qt.DecorationRole:
+            
+            return get_icon_for_icon_table( self.new_game_list_to_show[index.row()] )
+
+        elif role == Qt.ToolTipRole:
+            return self.new_game_list_to_show[index.row()]
+    
+    def rowCount(self, parent ):
+        return len(self.new_game_list_to_show)
+
+    @the_timer
+    def new_func_for_sort(self,column=None,reverse=None):
+        #if reverse is None:
+        #    reverse = the_variables.sort_reverse
+        #if column is None:
+        #    column = the_variables.sort_column
+        #
+        #sort_key_func = get_sort_func(column,reverse)
+        #
+        #if isinstance(self.new_game_list_to_show,list):
+        #    self.new_game_list_to_show.sort( key = sort_key_func,reverse = reverse, )
+        #else:
+        #    self.new_game_list_to_show= sorted( self.new_game_list_to_show, key = sort_key_func,reverse = reverse, )
+        if isinstance(self.new_game_list_to_show,list):
+            self.new_game_list_to_show.sort()
+        else:
+            self.new_game_list_to_show = sorted(self.new_game_list_to_show)
+
+    # 目录发出信号
+    # 显示新内容
+    def new_func_show_by_index(self,id_1,id_2):
+        print("")
+        print("show by index")
+        print("id_1: ",id_1)
+        print("id_2: ",id_2)
+
+        # 记录
+        self.new_remember_index_id_1 = id_1
+        self.new_remember_index_id_2 = id_2
+        self.new_search_flag = False
+        
+        ###
+        self.beginResetModel()
+        
+        self.new_func_clear_all_data()
+
+        # 取值
+        self.new_game_list_to_show = get_id_list_from_index_and_filter(id_1,id_2) # set
+        #   取值,未过滤时，都是 传地址地来的。 set or list
+        #   经过 过滤后，用 all_set 过滤，再减去用户设定的过滤项，传地址过来的，只有可能会剩下 all_set （过滤项为空时） 。 set
+        #   在下面 排序时，注意不要修改
+        #   这里得到的都是 set 类型，需要的是 list , 正好也不容易被修改
+
+        # 排序
+        self.new_func_for_sort()
+
+        # 数量信号
+        self.new_func_numbers_changed()
+
+
+
+        ###
+        self.endResetModel()
+
+        # 发送信号
+        self.new_signal_time_for_choose_remember_game.emit()
+    
+    # 列表搜索，显示搜索结果
+    def new_func_show_search_result(self,search_string,use_re=False,ignore_case=True,search_columns=tuple()):
+        print("")
+        print("show search result")
+
+        self.beginResetModel()
+
+        self.new_func_clear_all_data()
+
+        id_1 = self.new_remember_index_id_1
+        id_2 = self.new_remember_index_id_2
+        self.new_search_flag = True
+
+        # 取值，搜索范围
+        temp_game_ids =  get_id_list_from_index_and_filter(id_1,id_2) 
+        
+        # 搜索
+        self.new_game_list_to_show = func_for_search(search_string,search_object_list=[temp_game_ids,],use_re=use_re,ignore_case=ignore_case,search_columns=search_columns)
+        
+        # 排序
+        self.new_func_for_sort()
+
+        # 数量信号
+        self.new_func_numbers_changed()
+
+        self.endResetModel()
+
+        # 发送信号
+        self.new_signal_time_for_choose_remember_game.emit()
+
+    def new_func_clear_all_data(self):
+        print("clear data")
+        self.new_game_list_to_show = []
+
+    def new_func_cancel_search(self):
+        if not self.new_search_flag:
+            return
+        
+        self.new_search_flag = False
+
+        id_1,id_2 = self.new_remember_index_id_1,self.new_remember_index_id_2
+        self.new_func_show_by_index(id_1,id_2)
+    
+    def new_func_numbers_changed(self):
+        game_list_number = len(self.new_game_list_to_show)
+        self.singalGamelistNumberChanged.emit(game_list_number)
+
+    def new_func_get_id_and_item_by_index(self, index):
+        row = index.row()
+        game_id = self.new_game_list_to_show[row]
+        return game_id, machine_dict[ game_id ] 
+
+    def new_func_get_item_id_by_index(self, index):
+        row = index.row()
+        game_id = self.new_game_list_to_show[row]
+        return game_id
+
+    def new_func_get_index_by_game_id(self,game_id,):
+        result = QModelIndex()
+
+        if not game_id:
+            return result
+        
+        if not self.new_game_list_to_show:
+            return result
+        
+        try:
+            row = self.new_game_list_to_show.index(game_id)
+        except:
+            return result
+        
+        return self.index(row)
+    
 #########################
 #########################
 #########################
@@ -2859,6 +3565,12 @@ class Model_for_index(QAbstractItemModel):
         index_has_children = index_has_children_backup
 
         self.endResetModel()
+
+    def new_func_rebuild_index(self):
+        self.beginResetModel()
+        rebuild_index()
+        self.endResetModel()
+
 
 # editable_index_list
 # editable_index_has_children = dict()

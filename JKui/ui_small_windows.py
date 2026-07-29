@@ -18,18 +18,13 @@ import misc_funcs
 # 初始化时，设置 模拟器路径
 class Dialog_to_choose_emulator_path(QDialog):  
 
-    # signal
-    # mame_path , mame_working_directory
-    new_signal_for_emulator_path_and_working_directory = Signal(str,str)
-
-    def __init__(self, *args, **kwargs):
+    def __init__(self,qsettings, *args, **kwargs):
         super().__init__(*args, **kwargs)
+
+        self.new_settings = qsettings
 
         # 不显示关闭按钮
         self.setWindowFlags(self.windowFlags() & ~Qt.WindowCloseButtonHint)
-
-        parent = self.parentWidget()
-        self.new_signal_for_emulator_path_and_working_directory.connect(parent.new_func_slot_to_receive_emulator_path_and_working_dir)
 
         self.setSizeGripEnabled(True)
 
@@ -57,41 +52,98 @@ class Dialog_to_choose_emulator_path(QDialog):
         second_row_layout = QHBoxLayout()
         label21 = QLabel("MAME 工作目录:")
         self.new_line_edit2 = QLineEdit()
+        #self.new_line_edit2.setPlaceholderText("大多数情况可以忽略；但不可以乱填")
+        #self.new_line_edit2.setDisabled(True)
         button2 = QPushButton("...")
+        button2.clicked.connect(lambda:self.new_func_for_choose_dir(self.new_line_edit2))
+        #button2_2 = QPushButton("手动修改")
+        #button2_2.clicked.connect(lambda:self.new_line_edit2.setDisabled(False))
         second_row_layout.addWidget(label21)
         second_row_layout.addWidget(self.new_line_edit2)
         second_row_layout.addWidget(button2)
+        #second_row_layout.addWidget(button2_2)
         layout.addLayout(second_row_layout)
+
+        layout.addWidget(QLabel(""))
+
+        # groupbox
+        groupbox = QGroupBox()
+        vbox = QVBoxLayout()
+        self.new_button_group = QButtonGroup()
+        self.new_button_group.setExclusive(True)
+
+        # -listxml -dtd
+        self.new_button1 = QRadioButton("-listxml -dtd")
+        self.new_button_group.addButton(self.new_button1)
+        vbox.addWidget(self.new_button1)
+        self.new_button1.setChecked(True)
+
+        # -listxml
+        self.new_button2 = QRadioButton("-listxml")
+        self.new_button_group.addButton(self.new_button2)
+        vbox.addWidget(self.new_button2)
+
+        ## -listinfo
+        #self.new_button3 = QRadioButton("-listinfo")
+        #self.new_button_group.addButton(self.new_button3)
+        #vbox.addWidget(self.new_button3)
+
+        groupbox.setLayout(vbox)
+        layout.addWidget(groupbox)
+
+        layout.addWidget(QLabel(""),1)
+
 
         # 添加一个按钮以演示如何关闭对话框（可选）
         button = QPushButton("确认")
-        button.clicked.connect(self.new_func_for_close_this_dialog)
+        button.clicked.connect(self.new_func_for_ok)
         layout.addWidget(button)
 
         button = QPushButton("放弃")
         button.clicked.connect(sys.exit)
-        layout.addWidget(button)        
+        layout.addWidget(button)
 
         self.setLayout(layout)
 
-    def new_func_set_values(self,mame_path="", mame_working_directory=""):
+    def new_func_set_values(self,):
+
+        try:mame_path = self.new_settings.value("mame/path") 
+        except:mame_path = ""
+        if not isinstance(mame_path,str):
+            mame_path = ""
+        
+        try:mame_working_directory = self.new_settings.value("mame/working_directory")
+        except:mame_working_directory = ""
+        if not isinstance(mame_working_directory,str):
+            mame_working_directory = ""
+        
         self.new_line_edit1.setText(mame_path)
         self.new_line_edit2.setText(mame_working_directory)
-    def new_func_for_close_this_dialog(self,checked):
+    
+    def new_func_for_ok(self,checked):
 
         mame_path = self.new_line_edit1.text()
+        self.new_settings.setValue("mame/path",mame_path)
         if mame_path :
             print("mame_path: ",mame_path)
         
         mame_working_directory = self.new_line_edit2.text()
+        self.new_settings.setValue("mame/working_directory",mame_working_directory)
         if mame_working_directory :
             if os.path.isdir(mame_working_directory):
                 print("mame_working_directory: ",mame_working_directory)
-                
-        self.new_signal_for_emulator_path_and_working_directory.emit(mame_path,mame_working_directory)
-        parent = self.parentWidget()
+
+        text = self.new_button_group.checkedButton().text()
+        print("text: ",text)
+
+        if text == "-listxml -dtd":
+            the_variables.command_line_options_for_emulator_to_export_data = ["-listxml", "-dtd"]
+        elif text == "-listxml":
+            the_variables.command_line_options_for_emulator_to_export_data = ["-listxml"]
+        #elif text == "-listinfo":
+        #    the_variables.command_line_options_for_emulator_to_export_data = ["-listinfo"]
         
-        self.close()
+        self.accept()
     
     def new_func_for_choose_mame_executable(self,checked):
         print("选择 MAME 可执行文件")
@@ -106,6 +158,17 @@ class Dialog_to_choose_emulator_path(QDialog):
         if file_path :
             print("file_path: ",file_path)
             self.new_line_edit1.setText(file_path[0])
+
+    def new_func_for_choose_dir(self,line_edit):
+        dir_path = QFileDialog.getExistingDirectory(
+            self,
+            "选择文件夹",
+            "",  # 默认起始目录，空表示当前目录或上次使用的目录
+            )
+        if dir_path:
+            print("dir_path: ",dir_path)
+            line_edit.setText(dir_path)
+    
 
 # 菜单中 , 设置 周边路径
 class Dialog_to_set_extra_path(QDialog):
@@ -531,20 +594,35 @@ class Dialog_for_set_gamelist_icon_size(QDialog):
 
         # 第一行布局
         first_row_layout = QHBoxLayout()
-        label_1 = QLabel("图标宽度:")
+        label_1 = QLabel("普通列表，图标宽度:")
         self.new_line_edit1 = QLineEdit()
         first_row_layout.addWidget(label_1)
         first_row_layout.addWidget(self.new_line_edit1)
         layout.addLayout(first_row_layout)
 
-        layout.addWidget(QLabel(""))
+        # 第二行布局
+        second_row_layout = QHBoxLayout()
+        label_2 = QLabel("图标列表，图标宽度:")
+        self.new_line_edit2 = QLineEdit()
+        second_row_layout.addWidget(label_2)
+        second_row_layout.addWidget(self.new_line_edit2)
+        layout.addLayout(second_row_layout)
+
+        # 第三行布局
+        third_row_layout = QHBoxLayout()
+        label_3 = QLabel("图标列表，间距:")
+        self.new_line_edit3 = QLineEdit()
+        third_row_layout.addWidget(label_3)
+        third_row_layout.addWidget(self.new_line_edit3)
+        layout.addLayout(third_row_layout)
+
         layout.addWidget(QLabel("注：设置整数,大于0 "))
 
-
+        layout.addWidget(QLabel(""),1)
         # 
         button_ok = QPushButton("确认")
         button_ok.clicked.connect(self.new_func_for_ok)
-        #button_ok.clicked.connect(self.accept)
+        button_ok.clicked.connect(self.accept)
         layout.addWidget(button_ok)
 
         button_cancel = QPushButton("取消")
@@ -556,50 +634,73 @@ class Dialog_for_set_gamelist_icon_size(QDialog):
     def new_func_set_values(self,):
         settings = self.new_settings
 
+        self.new_line_edit1.clear()
+        self.new_line_edit2.clear()
+        self.new_line_edit3.clear()
+
+
+        # 图标大小（普通列表）
         try:icon_size = settings.value("gamelist/icon_size_for_gamelist",type=int)
         except:icon_size = 0
-
-        if icon_size is None:
-            icon_size = the_variables.icon_size
+        if type(icon_size) is int:
+            if icon_size > 0:
+                the_variables.icon_size = icon_size
+        self.new_line_edit1.setText(str(the_variables.icon_size))
         
-        if icon_size <= 0:
-            icon_size = the_variables.icon_size
+        # 图标大小（图标列表）
+        try:
+            icon_size_for_icon_table = self.new_settings.value("gamelist/icon_size_for_icon_table",type=int) # 取值到 the_variables.icon_size
+        except:
+            icon_size_for_icon_table = 0
+        if type(icon_size_for_icon_table) is int:
+            if icon_size_for_icon_table > 0:
+                ui_models.icon_size_for_icon_table = icon_size_for_icon_table
+        self.new_line_edit2.setText(str(ui_models.icon_size_for_icon_table))
 
-        self.new_line_edit1.setText(str(icon_size))
+        # 间距（图标列表）
+        try:
+            spacing_for_icon_table = self.new_settings.value("gamelist/spacing_for_icon_table",type=int) # 取值到 the_variables.icon_size
+        except:
+            spacing_for_icon_table = 0
+        if type(spacing_for_icon_table) is int:
+            if spacing_for_icon_table > 0:
+                the_variables.spacing_for_icon_table = spacing_for_icon_table
+        self.new_line_edit3.setText(str(the_variables.spacing_for_icon_table))
         
 
     def new_func_for_ok(self,checked):
         settings = self.new_settings
 
         icon_size = self.new_line_edit1.text()
+        icon_size_for_icon_table = self.new_line_edit2.text()
+        spacing_for_icon_table = self.new_line_edit3.text()
 
         try:
             icon_size = int(icon_size)
+            icon_size_for_icon_table = int(icon_size_for_icon_table)
+            spacing_for_icon_table = int(spacing_for_icon_table)
         except:
             QMessageBox.warning(self, "错误", "请输入整数,大于0")
             return
         
-        if icon_size == 0:
+        if (icon_size <= 0) or (icon_size_for_icon_table <= 0) or (spacing_for_icon_table <= 0):
             QMessageBox.warning(self, "错误", "请输入整数,大于0")
             return
+
+        # 赋值
+        the_variables.icon_size = icon_size
+        ui_models.icon_size_for_icon_table = icon_size_for_icon_table
+        the_variables.spacing_for_icon_table = spacing_for_icon_table
+        # 保存
+        settings.setValue("gamelist/icon_size_for_gamelist",icon_size)
+        settings.setValue("gamelist/spacing_for_icon_table",spacing_for_icon_table)
+        settings.setValue("gamelist/icon_size_for_icon_table",icon_size_for_icon_table)
         
-        if icon_size > 0 :
-            
-            try:old_size = settings.value("gamelist/icon_size_for_gamelist",type=int)
-            except:old_size = 0
-
-            if old_size != icon_size:
-
-                # 保存 设置
-                settings.setValue("gamelist/icon_size_for_gamelist",icon_size)
-
-                the_variables.icon_size = icon_size
-                ui_models.load_and_resize_internal_icon()
-
-                self.parent().centralWidget().new_func_refresh_layoutchange()
-
-            self.accept()
-
+        ui_models.load_and_resize_internal_icon()
+        self.parent().centralWidget().new_func_refresh_layoutchange()
+        self.parent().new_func_for_set_icon_table_spacing()
+        self.accept()
+        
 # 菜单中 , 游戏列表 行高
 class Dialog_for_set_gamelist_row_height(QDialog):  
 

@@ -19,6 +19,11 @@ class My_Tree_View(QTreeView):
         self.new_table_type = "tree_view"
         self.setObjectName("tree_view")
 
+        # 获取水平表头，并设置上下文菜单策略
+        header = self.header()
+        header.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
+        header.customContextMenuRequested.connect(self.new_func_show_header_context_menu)
+
 
         self.setUniformRowHeights(True)
 
@@ -47,6 +52,34 @@ class My_Tree_View(QTreeView):
     def new_func_set_model(self,):
         self.setModel(ui_models.Model_for_tree_view(self))
         self.model().new_signal_time_for_choose_remember_game.connect(self.new_func_scrollto_to_last_game)
+
+
+    def new_func_show_header_context_menu(self, pos):
+        """在表头位置显示右键菜单"""
+        menu = QMenu(self)
+        header = self.header()
+        
+        # 遍历所有列
+        for col in range(self.model().columnCount()):
+            # 获取列名
+            col_name = self.model().headerData(col, Qt.Orientation.Horizontal)
+            # 创建可勾选的QAction
+            action = QAction(col_name, self, checkable=True)
+            # 根据当前列的可见性设置初始勾选状态
+            action.setChecked(not header.isSectionHidden(col))
+            # 为每个action绑定切换列可见性的槽函数
+            action.toggled.connect(lambda checked, c=col: self.new_func_toggle_column_visibility(c, checked))
+            menu.addAction(action)
+        
+        # 在鼠标位置显示菜单
+        menu.exec(header.mapToGlobal(pos))
+
+    def new_func_toggle_column_visibility(self, column, visible):
+        """切换列的可见性"""
+        if visible:
+            self.showColumn(column)
+        else:
+            self.hideColumn(column)
 
 
     # 右键 菜单
@@ -232,8 +265,13 @@ class My_Tree_View(QTreeView):
         #        # 反选
         #        self.model().new_func_select_reverse()
 
+        # ctrl + B
+        if event.key() == Qt.Key_B:
+            if event.modifiers() == Qt.ControlModifier:
+                self.new_func_context_menu_bios_selector()
+
         # return
-        if event.key() == Qt.Key_Return:
+        elif event.key() == Qt.Key_Return:
             current_index = self.currentIndex()
             if current_index.isValid():
                 if self.selectionModel().isSelected(current_index):
@@ -330,18 +368,6 @@ class My_Tree_View(QTreeView):
             return        
         self.new_func_scrollto_row_by_game_id(the_variables.current_id)
 
-    
-    #def keyPressEvent(self, event):
-    #    # home 
-    #    if event.key() == Qt.Key_Home:
-    #        self.scrollToTop()
-    #    # end
-    #    elif event.key() == Qt.Key_End:
-    #        self.scrollToBottom()
-    #    else:
-    #        super().keyPressEvent(event)            
-
-
     ###########
     # 右键菜单
 
@@ -370,14 +396,17 @@ class My_Tree_View(QTreeView):
         
         if not current_index.isValid():
             return
+
+        selected_index_list = self.selectionModel().selectedIndexes()
+        if current_index in selected_index_list:
         
-        game_id, game_info = self.model().new_func_get_id_and_item_by_index(current_index)
-        
-        if not game_id:
-            return
-        
-        print(game_id)
-        self.parentWidget().new_func_mame_show_bios_selector( game_id,)
+            game_id, game_info = self.model().new_func_get_id_and_item_by_index(current_index)
+            
+            if not game_id:
+                return
+            
+            print(game_id)
+            self.parentWidget().new_func_mame_show_bios_selector( game_id,)
 
     def new_func_context_menu_script_selector(self,):
         current_index = self.currentIndex()

@@ -212,6 +212,7 @@ class TheMainWindow(QMainWindow):
         self.new_menu_font.addAction(action_set_row_height)
 
         # 字体等 游戏列表 设置图标大小
+        # 图标大小（普通列表）
         try:
             icon_size = self.new_settings.value("gamelist/icon_size_for_gamelist",type=int) # 取值到 the_variables.icon_size
         except:
@@ -219,6 +220,23 @@ class TheMainWindow(QMainWindow):
         if type(icon_size) is int:
             if icon_size > 0:
                 the_variables.icon_size = icon_size
+        # 图标大小（图标列表）
+        try:
+            icon_size_for_icon_table = self.new_settings.value("gamelist/icon_size_for_icon_table",type=int) # 取值到 the_variables.icon_size
+        except:
+            icon_size_for_icon_table = 0
+        if type(icon_size_for_icon_table) is int:
+            if icon_size_for_icon_table > 0:
+                ui_models.icon_size_for_icon_table = icon_size_for_icon_table
+        # 单元格间距（图标列表）
+        try:
+            spacing_for_icon_table = self.new_settings.value("gamelist/spacing_for_icon_table",type=int) # 取值到 the_variables.icon_table_cell_size
+        except:
+            spacing_for_icon_table = 0
+        if type(spacing_for_icon_table) is int:
+            if spacing_for_icon_table > 0:
+                the_variables.spacing_for_icon_table = spacing_for_icon_table
+        #
         self.new_menu_font.addSeparator()
         action_set_icon_size = QAction("设置图标大小",self,)
         action_set_icon_size.setCheckable(False)
@@ -248,7 +266,7 @@ class TheMainWindow(QMainWindow):
         self.new_action_delete_emulator.triggered.connect( self.new_func_delete_emulator )
         self.new_menu_settings.addAction(self.new_action_delete_emulator)
         #
-        self.new_action_emulator_settings = QAction("模拟器设置",self,)
+        self.new_action_emulator_settings = QAction("模拟器设置( MAME新版本的话，可以打开模拟器直接设置了 )",self,)
         self.new_action_emulator_settings.triggered.connect( self.centralWidget().new_func_start_emulator )
         self.new_menu_settings.addAction(self.new_action_emulator_settings)
         #
@@ -257,7 +275,7 @@ class TheMainWindow(QMainWindow):
         self.new_action_extra_path.triggered.connect( self.new_func_set_extra_path )
 
         ##### 目录
-        self.new_menu_index = self.menuBar().addMenu("目录")
+        self.new_menu_index = self.menuBar().addMenu("目录列表")
         # 编辑
         try:
             value = self.new_settings.value("index/edit_mode",type=bool)
@@ -296,13 +314,17 @@ class TheMainWindow(QMainWindow):
         self.new_action_show_tableview_2_level.triggered.connect( self.centralWidget().new_func_show_tableview_2_level )
         self.new_menu_gamelist.addAction(self.new_action_show_tableview_2_level)
         # 游戏列表 显示 tableview 2 level tree like
-        self.new_action_show_tableview_2_level_tree_like = QAction("显示 tableview 2 level 树状 (未完成)",self,)
+        self.new_action_show_tableview_2_level_tree_like = QAction("显示 tableview 2 level 树状",self,)
         self.new_action_show_tableview_2_level_tree_like.triggered.connect( self.centralWidget().new_func_show_tableview_2_level_tree_like )
         self.new_menu_gamelist.addAction(self.new_action_show_tableview_2_level_tree_like)
         # 游戏列表 显示 treeview
         self.new_action_show_treeview = QAction("显示 treeview",self,)
         self.new_action_show_treeview.triggered.connect( self.centralWidget().new_func_show_treeview )
         self.new_menu_gamelist.addAction(self.new_action_show_treeview)
+        # 游戏列表 显示 icon table
+        self.new_action_show_icon_table = QAction("显示 图标模式",self,)
+        self.new_action_show_icon_table.triggered.connect( self.centralWidget().new_func_show_icon_table )
+        self.new_menu_gamelist.addAction(self.new_action_show_icon_table)
         # 游戏列表 本地化排序
         self.new_menu_gamelist.addSeparator()
         action_set_sort_use_locale = QAction("本地化排序(仅翻译这一列)",self,)
@@ -330,6 +352,16 @@ class TheMainWindow(QMainWindow):
         action_set_mark_not_have.setChecked(the_variables.use_icon_not_have)
         action_set_mark_not_have.toggled.connect( self.new_func_gamelist_mark_not_have )
         self.new_menu_gamelist.addAction(action_set_mark_not_have)
+        # 游戏列表 使用额外 icon 资源包
+        self.new_menu_gamelist.addSeparator()
+        action_set_use_icon_extra_resource = QAction("使用图标",self,)
+        action_set_use_icon_extra_resource.setCheckable(True)
+        try:    the_variables.use_icon_extra_resource = self.new_settings.value("gamelist/use_icon_extra_resource",False,type=bool)
+        except: the_variables.use_icon_extra_resource = False
+        action_set_use_icon_extra_resource.setChecked(the_variables.use_icon_extra_resource)
+        action_set_use_icon_extra_resource.toggled.connect( self.new_func_gamelist_use_icon_extra_resource )
+        self.new_menu_gamelist.addAction(action_set_use_icon_extra_resource)
+
         # 游戏列表 全局过滤
         self.new_menu_gamelist.addSeparator()
         action_set_gamelist_filter = QAction("全局过滤",self,)
@@ -340,8 +372,8 @@ class TheMainWindow(QMainWindow):
         self.new_menu_gamelist.addSeparator()
         action_set_multi_selection_mode = QAction("多选模式（勾选）(仅前三个列表)",self,)
         action_set_multi_selection_mode.setCheckable(True)
-        #try:    ui_models.multi_selection_mode = self.new_settings.value("gamelist/multi_selection_mode",False,type=bool)
-        #except: ui_models.multi_selection_mode = False
+        try:    ui_models.multi_selection_mode = self.new_settings.value("gamelist/multi_selection_mode",False,type=bool)
+        except: ui_models.multi_selection_mode = False
         action_set_multi_selection_mode.setChecked(ui_models.multi_selection_mode)
         action_set_multi_selection_mode.toggled.connect( self.new_func_gamelist_multi_selection_mode )
         self.new_menu_gamelist.addAction(action_set_multi_selection_mode)
@@ -552,11 +584,14 @@ class TheMainWindow(QMainWindow):
         new_action_tableview_2_level_tree_like.triggered.connect( self.centralWidget().new_func_show_tableview_2_level_tree_like )
         new_action_treeview = QAction("4",self,)
         new_action_treeview.triggered.connect( self.centralWidget().new_func_show_treeview )
+        new_action_icon_table = QAction("5",self,)
+        new_action_icon_table.triggered.connect( self.centralWidget().new_func_show_icon_table )
 
         self.new_toolbar_for_gamelist.addAction(new_action_tableview)
         self.new_toolbar_for_gamelist.addAction(new_action_tableview_2_level)
         self.new_toolbar_for_gamelist.addAction(new_action_tableview_2_level_tree_like)
         self.new_toolbar_for_gamelist.addAction(new_action_treeview)
+        self.new_toolbar_for_gamelist.addAction(new_action_icon_table)
         #self.new_toolbar_for_gamelist.addSeparator()
 
         self.new_tool_bar_for_search = ui_small_windows.Toolbars_for_search(self)
@@ -734,6 +769,7 @@ class TheMainWindow(QMainWindow):
         ##'columns', 'dict_data', 'internal_index', 'machine_dict', 'mame_version', 'set_data'
         #
         ## clounms = []
+        print(data["columns"])
         ui_models.set_value("columns",data["columns"])
         #
         ## dict_data
@@ -797,12 +833,22 @@ class TheMainWindow(QMainWindow):
         
         # 目录列表，刷新
         self.new_ui_index.model().beginResetModel()
+        # 目录列表置顶项
         top_index_list_string = self.new_settings.value("index/top_index_list")
         if not top_index_list_string:
             top_index_list = []
         else:
             top_index_list = top_index_list_string.split(";")
-        ui_models.rebuild_index(top_index_list)
+        # 去重
+        temp_list = []
+        temp_set = set()
+        for x in top_index_list:
+            if x not in temp_set:
+                temp_list.append(x)
+            temp_set.add(x)
+        top_index_list = temp_list
+        ui_models.top_index_list = top_index_list
+        ui_models.rebuild_index()
         self.new_ui_index.model().endResetModel()
 
         # 可编辑目录 数据添加
@@ -815,8 +861,7 @@ class TheMainWindow(QMainWindow):
                 ui_models.icon_extra_resource = misc_funcs.load_icons_from_zip(icon_zip_path,ui_models.all_set)
             except:
                 ui_models.icon_extra_resource = dict()
-            if ui_models.icon_extra_resource:
-                the_variables.use_icon_extra_resource = True
+
         self.new_signal_for_update_model_data_finished.emit()
     
     # 启动时，初始化，最后一步，到这里
@@ -831,6 +876,7 @@ class TheMainWindow(QMainWindow):
         self.centralWidget().new_func_for_load_settings() # 游戏列表状态恢复
         self.new_func_set_row_height_for_tableview(at_start=True) # tableview 行高
         self.new_func_set_internal_qss() # treeview 行高，以及字体等，在 qss 中设置
+        self.new_func_for_set_icon_table_spacing() # 图标列表，单元格间距
 
         # last game ，这个得移动到启动最后，不然周边会使用 game_id 加载内容
         try:last_game = self.new_settings.value("game_remember",type=str)
@@ -885,7 +931,8 @@ class TheMainWindow(QMainWindow):
         # 标记未拥有游戏
         self.new_settings.setValue("use_icon_not_have",the_variables.use_icon_not_have)
 
-
+        # 目录列表置顶项 index/top_index_list
+        self.new_settings.setValue("index/top_index_list",";".join(ui_models.top_index_list))
 
         self.centralWidget().new_func_for_save_settings()
 
@@ -1081,23 +1128,11 @@ class TheMainWindow(QMainWindow):
         print("show dialog for choose emulator path and working dir")
 
         if self.new_dialog_for_choose_emulator_path_and_working_dir is None:
-            self.new_dialog_for_choose_emulator_path_and_working_dir = ui_small_windows.Dialog_to_choose_emulator_path(self)
+            self.new_dialog_for_choose_emulator_path_and_working_dir = ui_small_windows.Dialog_to_choose_emulator_path(self.new_settings,self)
         
-        mame_path = self.new_settings.value("mame/path") 
-        mame_working_directory = self.new_settings.value("mame/working_directory") 
-        self.new_dialog_for_choose_emulator_path_and_working_dir.new_func_set_values(mame_path,mame_working_directory)
+        self.new_dialog_for_choose_emulator_path_and_working_dir.new_func_set_values()
         
         self.new_dialog_for_choose_emulator_path_and_working_dir.exec()
-
-    @Slot(str,str)
-    def new_func_slot_to_receive_emulator_path_and_working_dir(self,mame_path,mame_working_directory):
-        print("")
-        print("slot to receive emulator path and working dir")
-        print("mame_path: ",mame_path)
-        print("mame_working_directory: ",mame_working_directory)
-        
-        self.new_settings.setValue("mame/path",mame_path)
-        self.new_settings.setValue("mame/working_directory",mame_working_directory)
 
     def new_func_check_mame_path(self):
         is_ok = False
@@ -1324,6 +1359,13 @@ class TheMainWindow(QMainWindow):
             self.new_dialog_for_set_gamelist_icon_size = ui_small_windows.Dialog_for_set_gamelist_icon_size(self.new_settings,self,)
         self.new_dialog_for_set_gamelist_icon_size.new_func_set_values()
         self.new_dialog_for_set_gamelist_icon_size.exec()
+    def new_func_for_set_icon_table_spacing(self):
+        central_widget = self.centralWidget()
+
+        # setSpacing
+        # Setting this property when the view is visible will cause the items to be laid out again.
+        central_widget.new_ui_gamelist_icon_table.setSpacing(the_variables.spacing_for_icon_table)
+
     # menu 显示 python 版本
     @Slot()
     def new_func_show_python_version(self,):
@@ -1452,6 +1494,12 @@ class TheMainWindow(QMainWindow):
             self.new_dialog_for_save_translation_file = ui_small_windows.Dialog_for_save_translation_file(self.new_settings,self,)
         self.new_dialog_for_save_translation_file.new_func_set_values()
         self.new_dialog_for_save_translation_file.exec()
+    # menu gamelist 使用额外 icon 资源包
+    @Slot(bool)
+    def new_func_gamelist_use_icon_extra_resource(self,checked):
+        the_variables.use_icon_extra_resource = checked
+        self.new_settings.setValue("gamelist/use_icon_extra_resource",checked)
+        self.centralWidget().new_func_refresh_layoutchange()
 
     # menu gamelist  扫描游戏文件，极简版，只扫描 .zip/.7z/文件夹 是否存在
     def new_func_scan_game_files_only_check_if_file_exists(self,merged=False):
@@ -1567,6 +1615,9 @@ class TheMainWindow(QMainWindow):
     @Slot(int)
     def on_modelForTableView2LevelTreeLike_singalGamelistNumberChanged(self,game_list_number):
         self.new_func_gamelist_number_changed(game_list_number)
+    @Slot(int)
+    def on_modelForIcon_singalGamelistNumberChanged(self,game_list_number):
+        self.new_func_gamelist_number_changed(game_list_number)        
     #
     @Slot(int)
     def new_func_gamelist_number_changed(self,game_list_number):
