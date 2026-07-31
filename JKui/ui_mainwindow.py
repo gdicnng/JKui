@@ -682,13 +682,17 @@ class TheMainWindow(QMainWindow):
     def new_func_save_gamelist_data_failed(self):
         QMessageBox.warning(self.parentWidget(), "出错", "数据文件保存失败：" + the_files.data_file)
     #
-    @Slot(dict)
+    @Slot(bytes)
     def new_func_on_xml_parse_finished(self,result):
         """XML解析完成"""
         print()
         print("xml parse finish ###########")
 
         self.new_func_progressbar_hide()
+
+        if result:
+            result = pickle.loads(result)
+
 
         if not result:
             QMessageBox.warning(self, "出错", "xml 解析失败")
@@ -699,7 +703,7 @@ class TheMainWindow(QMainWindow):
 
         
         self.new_buffer_to_hold_mame_data.close()
-
+        
         print(type(result))
         print(result.keys())
         
@@ -1860,11 +1864,12 @@ class Worker_load_extra_text_to_database(QObject):
 
 class Worker_parse_xml(QObject):
     
-    new_finished = Signal(dict)
+    new_finished = Signal(bytes)
     new_signal_for_save_file_failed = Signal()
     def __init__(self, xml_file,*args,**kwargs):
         super().__init__(*args,**kwargs)
         self.new_xml_file = xml_file
+        self.new_result = b""
 
 
     def new_func_do_work(self):
@@ -1876,10 +1881,14 @@ class Worker_parse_xml(QObject):
                 print(traceback.print_exception(exc_type, exc_value, exc_traceback))
 
             if result:
-                # 保存游戏列表数据
+                # 文件：保存游戏列表数据
                 self.new_func_save_gamelist_data(result)
 
-            self.new_finished.emit(result)
+                # 内存：结果 pickle 保存到 bytes
+                self.new_result = pickle.dumps(obj=result)
+
+
+            self.new_finished.emit(self.new_result)
 
     def new_func_save_gamelist_data(self,data):
         print()

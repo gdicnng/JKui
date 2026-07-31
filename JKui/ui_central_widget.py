@@ -279,6 +279,10 @@ class TheCentralWidget(QStackedWidget):
             return
 
         if hide:
+            self.new_saved_geometry_for_parent = None
+            self.new_saved_state_for_parent = None
+            self.new_saved_geometry_for_parent = self.parentWidget().saveGeometry()
+            self.new_saved_state_for_parent = self.parentWidget().saveState()
             self.parentWidget().hide()
 
             self.new_buffer_to_hold_error_data = io.BytesIO()
@@ -288,7 +292,7 @@ class TheCentralWidget(QStackedWidget):
             #self.new_process.setProcessChannelMode(QProcess.ForwardedChannels)
             self.new_process.setProcessChannelMode(QProcess.ForwardedOutputChannel)
             self.new_process.readyReadStandardError.connect(lambda: self.new_buffer_to_hold_error_data.write(self.new_process.readAllStandardError().data()))
-            self.new_process.finished.connect(self.parentWidget().show)
+            self.new_process.finished.connect(self.new_slot_for_show_parent_window)
             self.new_process.finished.connect(self.new_slot_for_standard_error_data)
             
             self.new_process.setProgram(exe_path)
@@ -342,6 +346,13 @@ class TheCentralWidget(QStackedWidget):
 
                 self.new_func_start_process(exe_path,working_directory,command_list,hide)
     #
+    @Slot()
+    def new_slot_for_show_parent_window(self):
+        if self.new_saved_geometry_for_parent:
+            self.parentWidget().restoreGeometry(self.new_saved_geometry_for_parent)
+        if self.new_saved_state_for_parent:
+            self.parentWidget().restoreState(self.new_saved_state_for_parent)
+        self.parentWidget().show()
     @Slot(int,QProcess.ExitStatus)
     def new_slot_for_standard_error_data(self,exitCode,exitStatus,):
         self.new_buffer_to_hold_error_data.seek(0)
