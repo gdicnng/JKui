@@ -444,19 +444,16 @@ def load_icons_from_zip(icon_zip_path,all_set=set()):
     return result
 
 
-def update_filter_set(qsettings):
-
-    settings = qsettings
+def update_filter_set(gamelist_filter):
 
     result = set()
 
     items=set()
 
-    value = settings.value("gamelist/filter")
-    if type(value) == str:
-        value = value.strip()
-        if value:
-            for item in value.split(","):
+    if type(gamelist_filter) == str:
+        gamelist_filter = gamelist_filter.strip()
+        if gamelist_filter:
+            for item in gamelist_filter.split(","):
                 item = item.strip()
                 if item:
                     items.add(item)

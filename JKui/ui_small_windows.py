@@ -1442,7 +1442,7 @@ class Dialog_to_set_gamelist_filter(QDialog):
 
         self.new_settings.setValue("gamelist/filter", value)
 
-        misc_funcs.update_filter_set(self.new_settings)
+        misc_funcs.update_filter_set(value)
 
         self.accept()
 

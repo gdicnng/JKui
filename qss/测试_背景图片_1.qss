@@ -88,7 +88,7 @@ QTextEdit{
     border:0;
 }
 /* 表格 QTreeView QTableView 文字区*/
-QTreeView ,QTableView {
+QTreeView , QTableView , QListView {
     background-color:rgba(0,0,0,100);/*  黑 半透明 */
     border: 0;
 }

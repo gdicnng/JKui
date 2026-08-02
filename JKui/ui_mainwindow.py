@@ -25,7 +25,6 @@ import extra_database
 
 
 class TheMainWindow(QMainWindow):
-    new_signal_for_update_model_data_finished = Signal()
 
     def __init__(self):
         super().__init__()
@@ -379,7 +378,7 @@ class TheMainWindow(QMainWindow):
         self.new_menu_gamelist.addAction(action_set_multi_selection_mode)
         # 游戏列表 列表编辑模式 仅翻译列
         self.new_menu_gamelist.addSeparator()
-        action_set_gamelist_edit_mode = QAction("列表编辑模式 仅翻译列(未完成)",self,)
+        action_set_gamelist_edit_mode = QAction("列表编辑模式 仅翻译列",self,)
         action_set_gamelist_edit_mode.setCheckable(True)
         #try:    ui_models.gamelist_editable_mode = self.new_settings.value("gamelist/gamelist_editable_mode",False,type=bool)
         #except: ui_models.gamelist_editable_mode = False
@@ -623,6 +622,7 @@ class TheMainWindow(QMainWindow):
     def new_func_load_data_from_emulator(self,):
         print()
         print( "export data from emulator")
+        self.setWindowTitle(the_variables.software_name + " - 从模拟器导出xml")
 
         mame_path = self.new_settings.value("mame/path") 
         mame_working_directory = self.new_settings.value("mame/working_directory") 
@@ -662,6 +662,7 @@ class TheMainWindow(QMainWindow):
     def new_func_parse_xml(self,):
         print()
         print("parse xml")
+        self.setWindowTitle(the_variables.software_name + " - 解析xml")
         self.new_thread_for_parse_xml = QThread(self)
         self.new_worker_for_parse_xml = Worker_parse_xml(self.new_buffer_to_hold_mame_data)
 
@@ -670,11 +671,9 @@ class TheMainWindow(QMainWindow):
         self.new_thread_for_parse_xml.started.connect(self.new_worker_for_parse_xml.new_func_do_work)
 
         self.new_worker_for_parse_xml.new_signal_for_save_file_failed.connect(self.new_func_save_gamelist_data_failed)
-        self.new_worker_for_parse_xml.new_finished.connect(self.new_func_on_xml_parse_finished)
-        self.new_worker_for_parse_xml.new_finished.connect(self.new_thread_for_parse_xml.quit)
-        self.new_worker_for_parse_xml.new_finished.connect(self.new_worker_for_parse_xml.deleteLater)
+        self.new_worker_for_parse_xml.new_signal_finished.connect(self.new_func_on_xml_parse_finished)
 
-        self.new_thread_for_parse_xml.finished.connect(self.new_thread_for_parse_xml.deleteLater)
+        self.new_thread_for_parse_xml.finished.connect(self.new_worker_for_parse_xml.deleteLater)
 
         self.new_thread_for_parse_xml.start()
     #
@@ -688,7 +687,8 @@ class TheMainWindow(QMainWindow):
         print()
         print("xml parse finish ###########")
 
-        self.new_func_progressbar_hide()
+        self.new_thread_for_parse_xml.quit()
+        self.new_thread_for_parse_xml.wait()
 
         if result:
             result = pickle.loads(result)
@@ -708,9 +708,7 @@ class TheMainWindow(QMainWindow):
         print(result.keys())
         
         self.new_func_update_model_data(result)
-
-        
-
+    
     # 初始化 类型二，从 临时文件 读取 数据
     def new_func_load_gamelist_data_from_file(self):
         filename = the_files.data_file
@@ -736,38 +734,7 @@ class TheMainWindow(QMainWindow):
     def new_func_update_model_data(self,data):
         print()
         print( "update model data" )
-        self.new_func_show_progress_bar()
-
-        self.new_thread_for_update_model_data = QThread(self)
-
-        self.new_thread_for_update_model_data.started.connect(lambda: self.new_func_update_model_data_work(data))
-        
-        self.new_signal_for_update_model_data_finished.connect(self.new_func_progressbar_hide)
-        self.new_signal_for_update_model_data_finished.connect(self.new_func_update_model_data_after)
-        self.new_signal_for_update_model_data_finished.connect(self.new_thread_for_update_model_data.quit)
-        self.new_signal_for_update_model_data_finished.connect(self.new_thread_for_update_model_data.deleteLater)
-        self.new_thread_for_update_model_data.start()
-    def new_func_update_model_data_work(self,data):
-        # 拥有列表
-        filename = the_files.available_file
-        if os.path.isfile(filename):
-            try:
-                file = open(filename, 'rb')
-                data_from_pickle = pickle.load( file )
-                file.close()
-                if isinstance(data_from_pickle,set):
-                    ui_models.available_set = data_from_pickle
-                else:
-                    print("拥有列表数据出错，不是 set 类型")
-                    ui_models.available_set = set()
-            except:
-                print( "read pickle failed")
-                print( filename )
-                QMessageBox.critical(self, "拥有列表数据读取失败", "pickle文件读取失败。\n文件可能损坏;\n或者用户无权限读取该文件：\n" + filename)
-                ui_models.available_set = set()
-
-        # 原始图标
-        ui_models.load_and_resize_internal_icon()
+        self.setWindowTitle(the_variables.software_name + " - 更新模型数据")
 
         # 更新模型数据
         ##'columns', 'dict_data', 'internal_index', 'machine_dict', 'mame_version', 'set_data'
@@ -802,74 +769,79 @@ class TheMainWindow(QMainWindow):
         ui_models.set_value("parent_set",data["set_data"]["parent_set"])
         ui_models.set_value("clone_set", data["set_data"]["clone_set"])
         print(data["set_data"].keys())
-        #
-        self.new_ui_statusbar_for_total_number.setText( str(len(data['set_data']['all_set'])) )
-
+        #        
+        # 原始图标
+        ui_models.load_and_resize_internal_icon()
         #
         ui_models.update_some_value()
 
-        # 更新过滤项
-        misc_funcs.update_filter_set(self.new_settings)
+        self.setWindowTitle(the_variables.software_name + " - 更新模型数据2")
 
-        # 加载外部索引,wip
-        # external_index
-        # external_index_by_source
-        ######
-        folders_path = self.new_settings.value("extra/folders")
-        print(folders_path)
-        extra_folders.all_dict = {game_id:game_id for game_id in data["set_data"]["all_set"]} # 
-        external_index = extra_folders.get_external_index_data(folders_path,file_extension=".ini")
-        # 更新 ui_models.editable_index_files
-        for x in external_index.keys():
-            if os.access(x, mode=os.W_OK):
-                #print(x,"\t",True)
-                ui_models.editable_index_files.add(x)
-        #print(len(ui_models.editable_index_files))
-        external_index_by_source = extra_folders.get_external_index_data(folders_path,file_extension=".source_ini")
-        ui_models.set_value("external_index",external_index)
-        ui_models.set_value("external_index_by_source",external_index_by_source)
-        extra_folders.all_dict = dict() # 清空
-        #print(external_index.keys())
-        #print(external_index_by_source.keys())
+        # translation_file_path
+        try:translation_file_path = self.new_settings.value("mame/translation_file")
+        except:translation_file_path = ""
+        if type(translation_file_path) != str:
+            translation_file_path = ""
 
-        # 加载翻译文件
-        self.new_func_load_translation_file()
+        # gamelist_filter
+        try:gamelist_filter = self.new_settings.value("gamelist/filter")
+        except:gamelist_filter = ""
+        if type(gamelist_filter) != str: 
+            gamelist_filter = ""
+
+        # folders_path
+        try:folders_path = self.new_settings.value("extra/folders")
+        except:folders_path = ""
+        if type(folders_path) != str: 
+            folders_path = ""
+
+        # top_index_list_string
+        try:top_index_list_string = self.new_settings.value("index/top_index_list")
+        except:top_index_list_string = ""
+        if type(top_index_list_string) != str: 
+            top_index_list_string = ""
+
+        # icon_zip_path
+        try:icon_zip_path = self.new_settings.value("extra/icons")
+        except:icon_zip_path = ""
+        if type(icon_zip_path) != str: 
+            icon_zip_path = ""
+
+        self.new_thread_for_update_model_data = QThread(self)
+        self.new_worker_after_parse_xml = Worker_after_parse_xml({
+                "translation_file_path":translation_file_path,
+                "gamelist_filter":gamelist_filter,
+                "folders_path":folders_path,
+                "top_index_list_string":top_index_list_string,
+                "icon_zip_path":icon_zip_path,
+                },
+                )
+        self.new_worker_after_parse_xml.moveToThread(self.new_thread_for_update_model_data)
+
+        self.new_thread_for_update_model_data.started.connect(self.new_worker_after_parse_xml.new_func_do_work)
+
+        self.new_worker_after_parse_xml.new_signal_for_finished.connect(self.new_func_update_model_data_after)
+
+        self.new_thread_for_update_model_data.finished.connect(self.new_worker_after_parse_xml.deleteLater)
+
+        self.new_thread_for_update_model_data.start()
+
+    # 启动时，初始化，最后一步，到这里
+    def new_func_update_model_data_after(self):
+        print()
+        print( "update model data after" )
+        self.setWindowTitle(the_variables.software_name + " - 更新模型数据完成")
+
+        self.new_thread_for_update_model_data.quit()
+        self.new_thread_for_update_model_data.wait()
+
         
         # 目录列表，刷新
         self.new_ui_index.model().beginResetModel()
-        # 目录列表置顶项
-        top_index_list_string = self.new_settings.value("index/top_index_list")
-        if not top_index_list_string:
-            top_index_list = []
-        else:
-            top_index_list = top_index_list_string.split(";")
-        # 去重
-        temp_list = []
-        temp_set = set()
-        for x in top_index_list:
-            if x not in temp_set:
-                temp_list.append(x)
-            temp_set.add(x)
-        top_index_list = temp_list
-        ui_models.top_index_list = top_index_list
-        ui_models.rebuild_index()
         self.new_ui_index.model().endResetModel()
 
-        # 可编辑目录 数据添加
-        ui_models.build_editable_index_data()
+        self.new_ui_statusbar_for_total_number.setText( str(len(ui_models.all_set)) )
 
-        # 加载图标
-        icon_zip_path = self.new_settings.value("extra/icons")
-        if icon_zip_path:
-            try:
-                ui_models.icon_extra_resource = misc_funcs.load_icons_from_zip(icon_zip_path,ui_models.all_set)
-            except:
-                ui_models.icon_extra_resource = dict()
-
-        self.new_signal_for_update_model_data_finished.emit()
-    
-    # 启动时，初始化，最后一步，到这里
-    def new_func_update_model_data_after(self):
         # 更新标题
         if ui_models.mame_version:
             temp = str( ui_models.mame_version )
@@ -890,15 +862,11 @@ class TheMainWindow(QMainWindow):
 
         self.new_func_index_select_remember_after_load_settings()
     
-    def new_func_load_translation_file(self,):
-        translation_file_path = self.new_settings.value("mame/translation_file")
-        if not translation_file_path:
-            return
-        if os.path.isfile(translation_file_path):
-            try:
-                ui_models.load_gamelist_translation_file(translation_file_path)
-            except:
-                print("load translation file failed")
+        self.new_func_progressbar_hide()
+
+        #print("for test,quit")
+        #sys.exit()
+        #QTimer.singleShot(3000, self.close)
 
     #################################
     #################################
@@ -1254,18 +1222,65 @@ class TheMainWindow(QMainWindow):
                 os.remove(the_files.extra_database_file)
             except:
                 pass
+
+        settings = self.new_settings
+
+        try:history_xml_path = settings.value("extra/history")
+        except:history_xml_path=""
+        if type(history_xml_path) != str:
+            history_xml_path=""
+
+        try:history_dat_path = settings.value("extra/history_dat")
+        except:history_dat_path=""
+        if type(history_dat_path) != str:
+            history_dat_path=""
+
+        try:gameinit_path = settings.value("extra/gameinit")
+        except:gameinit_path=""
+        if type(gameinit_path) != str:
+            gameinit_path=""
+
+        try:mameinfo_path = settings.value("extra/mameinfo")
+        except:mameinfo_path=""
+        if type(mameinfo_path) != str:
+            mameinfo_path=""
+
+        try:messinfo_path = settings.value("extra/messinfo")
+        except:messinfo_path=""
+        if type(messinfo_path) != str:
+            messinfo_path=""
+
+        try:command_path = settings.value("extra/command")
+        except:command_path=""
+        if type(command_path) != str:
+            command_path=""
+
+        try:command_english_path = settings.value("extra/command_english")
+        except:command_english_path=""
+        if type(command_english_path) != str:
+            command_english_path=""
         
         # QThread
         self.new_thread_for_load_data_to_database = QThread(self)
-        self.new_worker_for_load_data_to_database = Worker_load_extra_text_to_database(self.new_settings)
+        self.new_worker_for_load_data_to_database = Worker_load_extra_text_to_database({
+            "history_xml_path":history_xml_path,
+            "history_dat_path":history_dat_path,
+            "gameinit_path":gameinit_path,
+            "mameinfo_path":mameinfo_path,
+            "messinfo_path":messinfo_path,
+            "command_path":command_path,
+            "command_english_path":command_english_path,
+            },
+            )
         self.new_worker_for_load_data_to_database.moveToThread(self.new_thread_for_load_data_to_database)
 
         self.new_thread_for_load_data_to_database.started.connect(self.new_worker_for_load_data_to_database.new_func_do_work)
 
         self.new_worker_for_load_data_to_database.new_signal_for_finished.connect(self.new_func_progressbar_hide)
         self.new_worker_for_load_data_to_database.new_signal_for_finished.connect(self.new_thread_for_load_data_to_database.quit)
-        self.new_worker_for_load_data_to_database.new_signal_for_finished.connect(self.new_worker_for_load_data_to_database.deleteLater)        
-        self.new_worker_for_load_data_to_database.new_signal_for_finished.connect(self.new_thread_for_load_data_to_database.deleteLater)        
+
+        self.new_thread_for_load_data_to_database.finished.connect(self.new_worker_for_load_data_to_database.deleteLater)
+        self.new_thread_for_load_data_to_database.finished.connect(self.new_thread_for_load_data_to_database.deleteLater)
         
         self.new_thread_for_load_data_to_database.start()
     # menu 删除模拟器路径
@@ -1573,8 +1588,8 @@ class TheMainWindow(QMainWindow):
 
         self.new_worker_for_scan_roms.new_signal_for_finished.connect(self.new_func_scan_game_files_only_check_if_file_exists_step_3)
         self.new_worker_for_scan_roms.new_signal_for_finished.connect(self.new_thread_for_scan_roms.quit)
-        self.new_worker_for_scan_roms.new_signal_for_finished.connect(self.new_worker_for_scan_roms.deleteLater)
 
+        self.new_thread_for_scan_roms.finished.connect(self.new_worker_for_scan_roms.deleteLater)
         self.new_thread_for_scan_roms.finished.connect(self.new_thread_for_scan_roms.deleteLater)
 
         self.new_thread_for_scan_roms.start()
@@ -1738,7 +1753,7 @@ class TheMainWindow(QMainWindow):
             if colour_r <=255 and colour_g <=255 and colour_b <=255 and colour_a <=255:
                 colour_qss=f"selection-color: rgba({colour_r},{colour_g},{colour_b},{colour_a});"
         if background_qss or colour_qss:
-            qss_string.append(f"QTreeView,QTableView{{ {background_qss} {colour_qss} }}")
+            qss_string.append(f"QTreeView,QTableView,QListView{{ {background_qss} {colour_qss} }}")
 
         # 其它 
 
@@ -1807,52 +1822,57 @@ class Worker_Test(QRunnable):
 class Worker_load_extra_text_to_database(QObject):
     new_signal_for_finished = Signal()
 
-    def __init__(self, settings,*args,**kwargs):
+    def __init__(self, some_values=None,*args,**kwargs):
         super().__init__()
-        self.new_settings = settings
+
+        if some_values is None:
+            some_values = dict()
+        self.new_some_values = some_values
+        # history_xml_path
+        # history_dat_path
+        # gameinit_path
+        # mameinfo_path
+        # messinfo_path
+        # command_path
+        # command_english_path
     
     def new_func_do_work(self):
         print("--------------------------------------")
         print("load extra text to database")
 
-
-        settings = self.new_settings
- 
-        
-
         conn = sqlite3.connect(the_files.extra_database_file)
         
-        history_xml_path = settings.value("extra/history")
+        history_xml_path = self.new_some_values.get("history_xml_path","")
         if os.path.isfile(history_xml_path):
             print(history_xml_path)
             extra_database.update_history(conn,history_xml_path,ui_models.parent_set)
 
-        history_dat_path = settings.value("extra/history_dat")
+        history_dat_path = self.new_some_values.get("history_dat_path","")
         if os.path.isfile(history_dat_path):
             print(history_dat_path)
             extra_database.update_history_2(conn,history_dat_path,ui_models.parent_set)
 
-        gameinit_path = settings.value("extra/gameinit")
+        gameinit_path = self.new_some_values.get("gameinit_path","")
         if os.path.isfile(gameinit_path):
             print(gameinit_path)
             extra_database.update_gameinit(conn,gameinit_path,ui_models.parent_set)
 
-        mameinfo_path = settings.value("extra/mameinfo")
+        mameinfo_path = self.new_some_values.get("mameinfo_path","")
         if os.path.isfile(mameinfo_path):
             print(mameinfo_path)
             extra_database.update_mameinfo(conn,mameinfo_path,ui_models.parent_set)
 
-        messinfo_path = settings.value("extra/messinfo")
+        messinfo_path = self.new_some_values.get("messinfo_path","")
         if os.path.isfile(messinfo_path):
             print(messinfo_path)
             extra_database.update_messinfo(conn,messinfo_path,ui_models.parent_set)
 
-        command_path = settings.value("extra/command")
+        command_path = self.new_some_values.get("command_path","")
         if os.path.isfile(command_path):
             print(command_path)
             extra_database.update_command(conn,command_path,ui_models.parent_set)
 
-        command_english_path = settings.value("extra/command_english")
+        command_english_path = self.new_some_values.get("command_english_path","")
         if os.path.isfile(command_english_path):
             print(command_english_path)
             extra_database.update_command_english(conn,command_english_path,ui_models.parent_set)
@@ -1864,13 +1884,12 @@ class Worker_load_extra_text_to_database(QObject):
 
 class Worker_parse_xml(QObject):
     
-    new_finished = Signal(bytes)
+    new_signal_finished = Signal(bytes)
     new_signal_for_save_file_failed = Signal()
     def __init__(self, xml_file,*args,**kwargs):
         super().__init__(*args,**kwargs)
         self.new_xml_file = xml_file
         self.new_result = b""
-
 
     def new_func_do_work(self):
             try:
@@ -1887,8 +1906,7 @@ class Worker_parse_xml(QObject):
                 # 内存：结果 pickle 保存到 bytes
                 self.new_result = pickle.dumps(obj=result)
 
-
-            self.new_finished.emit(self.new_result)
+            self.new_signal_finished.emit(self.new_result)
 
     def new_func_save_gamelist_data(self,data):
         print()
@@ -1905,6 +1923,140 @@ class Worker_parse_xml(QObject):
             print( "save to ")
             print( filename )
             self.new_signal_for_save_file_failed.emit()
+
+class Worker_after_parse_xml(QObject):
+    
+    new_signal_for_finished = Signal()
+
+    def __init__(self, some_values=None,*args,**kwargs):
+        super().__init__(*args,**kwargs)
+
+        if some_values is None:
+            some_values = dict()
+        
+        self.new_some_values = some_values
+        # translation_file_path
+        # gamelist_filter
+        # folders_path
+        # top_index_list_string
+        # icon_zip_path
+
+
+    def new_func_load_translation_file(self,):
+        translation_file_path = self.new_some_values.get("translation_file_path","")
+        if not translation_file_path:
+            return
+        if os.path.isfile(translation_file_path):
+            try:
+                ui_models.load_gamelist_translation_file(translation_file_path)
+            except:
+                print("load translation file failed")
+                exc_type, exc_value, exc_traceback = sys.exc_info()
+                print(traceback.print_exception(exc_type, exc_value, exc_traceback))
+
+    @Slot()
+    def new_func_do_work(self,):
+        print("do work")
+
+        # 拥有列表
+        print("load available set")
+        filename = the_files.available_file
+        if os.path.isfile(filename):
+            try:
+                file = open(filename, 'rb')
+                data_from_pickle = pickle.load( file )
+                file.close()
+                if isinstance(data_from_pickle,set):
+                    ui_models.available_set = data_from_pickle
+                else:
+                    print("拥有列表数据出错，不是 set 类型")
+                    ui_models.available_set = set()
+            except:
+                print( "read pickle failed")
+                print( filename )
+                #QMessageBox.critical(self, "拥有列表数据读取失败", "pickle文件读取失败。\n文件可能损坏;\n或者用户无权限读取该文件：\n" + filename)
+                ui_models.available_set = set()
+                exc_type, exc_value, exc_traceback = sys.exc_info()
+                print(traceback.print_exception(exc_type, exc_value, exc_traceback))
+
+        # 更新过滤项
+        print("update filter set")
+        try:
+            misc_funcs.update_filter_set(self.new_some_values.get("gamelist_filter",""))
+        except:
+            print("update filter set failed")
+            exc_type, exc_value, exc_traceback = sys.exc_info()
+            print(traceback.print_exception(exc_type, exc_value, exc_traceback))
+
+        # 加载外部索引,wip
+        # external_index
+        # external_index_by_source
+        ######
+        folders_path = self.new_some_values.get("folders_path","")
+        if folders_path:
+            try:
+                print(folders_path)
+                extra_folders.all_dict = {game_id:game_id for game_id in ui_models.all_set} # 
+                external_index = extra_folders.get_external_index_data(folders_path,file_extension=".ini")
+                # 更新 ui_models.editable_index_files
+                for x in external_index.keys():
+                    if os.access(x, mode=os.W_OK):
+                        #print(x,"\t",True)
+                        ui_models.editable_index_files.add(x)
+                #print(len(ui_models.editable_index_files))
+                external_index_by_source = extra_folders.get_external_index_data(folders_path,file_extension=".source_ini")
+                ui_models.set_value("external_index",external_index)
+                ui_models.set_value("external_index_by_source",external_index_by_source)
+                extra_folders.all_dict = dict() # 清空
+                #print(external_index.keys())
+                #print(external_index_by_source.keys())
+            except:
+                print("load external index failed")
+                exc_type, exc_value, exc_traceback = sys.exc_info()
+                print(traceback.print_exception(exc_type, exc_value, exc_traceback))
+        else:
+            print("folders_path is empty")
+        #
+        #
+        # rebuild_index
+        # 置顶项
+        print("top_index_list")
+        top_index_list_string = self.new_some_values.get("top_index_list_string","")
+        if not top_index_list_string:
+            top_index_list = []
+        else:
+            top_index_list = top_index_list_string.split(";")
+        # 去重
+        temp_list = []
+        temp_set = set()
+        for x in top_index_list:
+            if x not in temp_set:
+                temp_list.append(x)
+            temp_set.add(x)
+        top_index_list = temp_list
+        ui_models.top_index_list = top_index_list
+        ui_models.rebuild_index()
+        #
+        # build_editable_index_data
+        ui_models.build_editable_index_data()
+
+        # 加载翻译文件
+        print("load translation file")
+        self.new_func_load_translation_file()
+
+        # 加载图标
+        print("load icons")
+        icon_zip_path = self.new_some_values.get("icon_zip_path","")
+        if icon_zip_path:
+            try:
+                ui_models.icon_extra_resource = misc_funcs.load_icons_from_zip(icon_zip_path,ui_models.all_set)
+            except:
+                ui_models.icon_extra_resource = dict()
+                exc_type, exc_value, exc_traceback = sys.exc_info()
+                print(traceback.print_exception(exc_type, exc_value, exc_traceback))
+
+        print("finish")
+        self.new_signal_for_finished.emit()
 
 class Worker_for_scan_game_files(QObject):
     new_signal_for_finished = Signal(set)
@@ -1987,6 +2139,7 @@ def main():
         # 解析 MAME xml
         window.new_func_load_data_from_emulator()
     else:
+        window.new_func_show_progress_bar()
         # 从数据文件读取数据
         window.new_func_load_gamelist_data_from_file()
     

@@ -45,7 +45,7 @@ def get_external_index_data(folders_path,file_extension=".ini"):
 
 
 
-def folders_search_ini(path,file_extension=".ini"):
+def folders_search_ini(dir_path,file_extension=".ini"):
     # 搜索 ini 文件
     
     # 扩展名
@@ -54,7 +54,7 @@ def folders_search_ini(path,file_extension=".ini"):
         # *.sl_ini
     
     
-    search_str = os.path.join(path, ext)
+    search_str = os.path.join(dir_path, ext)
     #print( search_str )
     
     result = glob.glob( search_str )
