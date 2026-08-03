@@ -616,6 +616,30 @@ class Dialog_for_set_gamelist_icon_size(QDialog):
         third_row_layout.addWidget(self.new_line_edit3)
         layout.addLayout(third_row_layout)
 
+        # 第四行布局
+        fourth_row_layout = QHBoxLayout()
+        label_4 = QLabel("图片列表，间距:")
+        self.new_line_edit4 = QLineEdit()
+        fourth_row_layout.addWidget(label_4)
+        fourth_row_layout.addWidget(self.new_line_edit4)
+        layout.addLayout(fourth_row_layout)
+
+        # 第五行布局
+        fifth_row_layout = QHBoxLayout()
+        label_5 = QLabel("图片列表，图片宽度:")
+        self.new_line_edit5 = QLineEdit()
+        fifth_row_layout.addWidget(label_5)
+        fifth_row_layout.addWidget(self.new_line_edit5)
+        layout.addLayout(fifth_row_layout)
+
+        # 第六行布局
+        sixth_row_layout = QHBoxLayout()
+        label_6 = QLabel("图片列表，图片高度:")
+        self.new_line_edit6 = QLineEdit()
+        sixth_row_layout.addWidget(label_6)
+        sixth_row_layout.addWidget(self.new_line_edit6)
+        layout.addLayout(sixth_row_layout)
+
         layout.addWidget(QLabel("注：设置整数,大于0 "))
 
         layout.addWidget(QLabel(""),1)
@@ -666,24 +690,59 @@ class Dialog_for_set_gamelist_icon_size(QDialog):
             if spacing_for_icon_table > 0:
                 the_variables.spacing_for_icon_table = spacing_for_icon_table
         self.new_line_edit3.setText(str(the_variables.spacing_for_icon_table))
-        
 
+        # 间距（图片列表）
+        try:
+            sapcing_for_image_table = self.new_settings.value("gamelist/sapcing_for_image_table",type=int) # 取值到 the_variables.sapcing_for_image_table
+        except:
+            sapcing_for_image_table = 0
+        if type(sapcing_for_image_table) is int:
+            if sapcing_for_image_table > 0:
+                the_variables.sapcing_for_image_table = sapcing_for_image_table
+        self.new_line_edit4.setText(str(the_variables.sapcing_for_image_table))
+
+        # 图片宽度（图片列表）
+        try:
+            image_width_for_image_table = self.new_settings.value("gamelist/image_width_for_image_table",type=int) # 取值到 the_variables.sapcing_for_image_table
+        except:
+            image_width_for_image_table = 0
+        if type(image_width_for_image_table) is int:
+            if image_width_for_image_table > 0:
+                ui_models.image_width_for_image_table = image_width_for_image_table
+        self.new_line_edit5.setText(str(ui_models.image_width_for_image_table))
+        
+        # 图片高度（图片列表）
+        try:
+            image_height_for_image_table = self.new_settings.value("gamelist/image_height_for_image_table",type=int) # 取值到 the_variables.sapcing_for_image_table
+        except:
+            image_height_for_image_table = 0
+        if type(image_height_for_image_table) is int:
+            if image_height_for_image_table > 0:
+                ui_models.image_height_for_image_table = image_height_for_image_table
+        self.new_line_edit6.setText(str(ui_models.image_height_for_image_table))
+        
     def new_func_for_ok(self,checked):
         settings = self.new_settings
 
         icon_size = self.new_line_edit1.text()
         icon_size_for_icon_table = self.new_line_edit2.text()
         spacing_for_icon_table = self.new_line_edit3.text()
+        sapcing_for_image_table = self.new_line_edit4.text()
+        image_width_for_image_table = self.new_line_edit5.text()
+        image_height_for_image_table = self.new_line_edit6.text()
 
         try:
             icon_size = int(icon_size)
             icon_size_for_icon_table = int(icon_size_for_icon_table)
             spacing_for_icon_table = int(spacing_for_icon_table)
+            sapcing_for_image_table = int(sapcing_for_image_table)
+            image_width_for_image_table = int(image_width_for_image_table)
+            image_height_for_image_table = int(image_height_for_image_table)
         except:
             QMessageBox.warning(self, "错误", "请输入整数,大于0")
             return
         
-        if (icon_size <= 0) or (icon_size_for_icon_table <= 0) or (spacing_for_icon_table <= 0):
+        if (icon_size <= 0) or (icon_size_for_icon_table <= 0) or (spacing_for_icon_table <= 0) or (sapcing_for_image_table <= 0) or (image_width_for_image_table <= 0) or (image_height_for_image_table <= 0):
             QMessageBox.warning(self, "错误", "请输入整数,大于0")
             return
 
@@ -691,14 +750,20 @@ class Dialog_for_set_gamelist_icon_size(QDialog):
         the_variables.icon_size = icon_size
         ui_models.icon_size_for_icon_table = icon_size_for_icon_table
         the_variables.spacing_for_icon_table = spacing_for_icon_table
+        the_variables.sapcing_for_image_table = sapcing_for_image_table
+        ui_models.image_width_for_image_table = image_width_for_image_table
+        ui_models.image_height_for_image_table = image_height_for_image_table
         # 保存
         settings.setValue("gamelist/icon_size_for_gamelist",icon_size)
         settings.setValue("gamelist/spacing_for_icon_table",spacing_for_icon_table)
         settings.setValue("gamelist/icon_size_for_icon_table",icon_size_for_icon_table)
+        settings.setValue("gamelist/sapcing_for_image_table",sapcing_for_image_table)
+        settings.setValue("gamelist/image_width_for_image_table",image_width_for_image_table)
+        settings.setValue("gamelist/image_height_for_image_table",image_height_for_image_table)
         
         ui_models.load_and_resize_internal_icon()
+        self.parent().new_func_for_set_listview_spacing()
         self.parent().centralWidget().new_func_refresh_layoutchange()
-        self.parent().new_func_for_set_icon_table_spacing()
         self.accept()
         
 # 菜单中 , 游戏列表 行高

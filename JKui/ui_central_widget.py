@@ -57,15 +57,21 @@ class TheCentralWidget(QStackedWidget):
         self.new_ui_gamelist_icon_table = ui_gamelist_listview.My_Icon_Table(self)
         self.addWidget(self.new_ui_gamelist_icon_table)
 
+        ####
+        # list view image
+        self.new_ui_gamelist_image_table = ui_gamelist_listview.My_Image_Table(self)
+        self.addWidget(self.new_ui_gamelist_image_table)
 
+
+        self.setCurrentWidget(self.new_ui_gamelist_tableview)
 
         for table in self.children():
             if hasattr(table,"model"):
                 if hasattr(table.model(),"new_signal_need_reload_gamelist"):
                     table.model().new_signal_need_reload_gamelist.connect(self.new_func_reload_gamelist)
                     print("connect","new_signal_need_reload_gamelist",table.objectName(),)
+
  
-   
     def new_func_show_table(self,the_table):
         old_table = self.currentWidget()
 
@@ -75,6 +81,12 @@ class TheCentralWidget(QStackedWidget):
         old_table.model().beginResetModel()
         old_table.model().new_func_clear_all_data()
         old_table.model().endResetModel()
+
+        if old_table is self.new_ui_gamelist_image_table:
+            old_table.model().new_func_close_zip()
+
+        if the_table is self.new_ui_gamelist_image_table:
+            the_table.model().new_func_open_zip()
         
         self.setCurrentWidget(the_table)
 
@@ -96,6 +108,9 @@ class TheCentralWidget(QStackedWidget):
 
     def new_func_show_icon_table(self,):
         self.new_func_show_table(self.new_ui_gamelist_icon_table)
+
+    def new_func_show_image_table(self,):
+        self.new_func_show_table(self.new_ui_gamelist_image_table)
 
     def new_func_refresh_layoutchange(self,):
         widget = self.currentWidget()
@@ -172,7 +187,8 @@ class TheCentralWidget(QStackedWidget):
             if  isinstance(widget,QTableView) or isinstance(widget,QTreeView) or isinstance(widget,QListView):
                 object_name = widget.objectName()
                 if object_name == the_object_name:
-                    self.setCurrentWidget(widget)
+                    #self.setCurrentWidget(widget)
+                    self.new_func_show_table(widget)
                     break
 
 

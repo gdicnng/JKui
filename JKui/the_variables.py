@@ -19,7 +19,8 @@ locale_original = None
 icon_size=16
 use_icon_not_have = False
 use_icon_extra_resource = False
-spacing_for_icon_table = 15 # 不用这个了
+spacing_for_icon_table = 15
+sapcing_for_image_table = 15
 #icon_table_cell_size = 40,50 
 
 

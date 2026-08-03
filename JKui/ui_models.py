@@ -1,10 +1,13 @@
 import os
+import traceback
+import sys
 import re
 import collections
 import operator
 import locale
 import time
 import functools
+import zipfile
 
 from qtpy.QtGui import *
 from qtpy.QtWidgets import *
@@ -87,6 +90,10 @@ icon_green_pixmap_for_icon_table = None
 icon_yellow_pixmap_for_icon_table = None
 icon_black_pixmap_for_icon_table = None
 icon_not_have_pixmap_for_icon_table = None
+image_width_for_image_table = 400
+image_height_for_image_table = 300
+empty_image_pixmap_for_image_table = None
+
 
 
 # new_table_type 
@@ -163,6 +170,7 @@ def load_and_resize_internal_icon():
     global icon_red_pixmap, icon_green_pixmap, icon_yellow_pixmap, icon_black_pixmap,icon_not_have_pixmap
     global icon_red_pixmap_for_icon_table, icon_green_pixmap_for_icon_table, icon_yellow_pixmap_for_icon_table
     global icon_black_pixmap_for_icon_table,icon_not_have_pixmap_for_icon_table
+    global empty_image_pixmap_for_image_table
 
     icon_size =QSize(the_variables.icon_size,the_variables.icon_size)
     icon_size_2 = QSize(icon_size_for_icon_table,icon_size_for_icon_table)
@@ -289,6 +297,10 @@ def load_and_resize_internal_icon():
                 )
     except:
         pass
+
+    empty_image_pixmap_for_image_table = QPixmap(image_width_for_image_table,image_height_for_image_table,)
+    empty_image_pixmap_for_image_table.fill(Qt.transparent)
+
 
 def update_some_value():
     global icon_column_index
@@ -3274,6 +3286,293 @@ class Model_for_icon(QAbstractListModel): # QAbstractItemModel
         elif role == Qt.DecorationRole:
             
             return get_icon_for_icon_table( self.new_game_list_to_show[index.row()] )
+
+        elif role == Qt.ToolTipRole:
+            return self.new_game_list_to_show[index.row()]
+    
+    def rowCount(self, parent ):
+        return len(self.new_game_list_to_show)
+
+    @the_timer
+    def new_func_for_sort(self,column=None,reverse=None):
+        #if reverse is None:
+        #    reverse = the_variables.sort_reverse
+        #if column is None:
+        #    column = the_variables.sort_column
+        #
+        #sort_key_func = get_sort_func(column,reverse)
+        #
+        #if isinstance(self.new_game_list_to_show,list):
+        #    self.new_game_list_to_show.sort( key = sort_key_func,reverse = reverse, )
+        #else:
+        #    self.new_game_list_to_show= sorted( self.new_game_list_to_show, key = sort_key_func,reverse = reverse, )
+        if isinstance(self.new_game_list_to_show,list):
+            self.new_game_list_to_show.sort()
+        else:
+            self.new_game_list_to_show = sorted(self.new_game_list_to_show)
+
+    # 目录发出信号
+    # 显示新内容
+    def new_func_show_by_index(self,id_1,id_2):
+        print("")
+        print("show by index")
+        print("id_1: ",id_1)
+        print("id_2: ",id_2)
+
+        # 记录
+        self.new_remember_index_id_1 = id_1
+        self.new_remember_index_id_2 = id_2
+        self.new_search_flag = False
+        
+        ###
+        self.beginResetModel()
+        
+        self.new_func_clear_all_data()
+
+        # 取值
+        self.new_game_list_to_show = get_id_list_from_index_and_filter(id_1,id_2) # set
+        #   取值,未过滤时，都是 传地址地来的。 set or list
+        #   经过 过滤后，用 all_set 过滤，再减去用户设定的过滤项，传地址过来的，只有可能会剩下 all_set （过滤项为空时） 。 set
+        #   在下面 排序时，注意不要修改
+        #   这里得到的都是 set 类型，需要的是 list , 正好也不容易被修改
+
+        # 排序
+        self.new_func_for_sort()
+
+        # 数量信号
+        self.new_func_numbers_changed()
+
+
+
+        ###
+        self.endResetModel()
+
+        # 发送信号
+        self.new_signal_time_for_choose_remember_game.emit()
+    
+    # 列表搜索，显示搜索结果
+    def new_func_show_search_result(self,search_string,use_re=False,ignore_case=True,search_columns=tuple()):
+        print("")
+        print("show search result")
+
+        self.beginResetModel()
+
+        self.new_func_clear_all_data()
+
+        id_1 = self.new_remember_index_id_1
+        id_2 = self.new_remember_index_id_2
+        self.new_search_flag = True
+
+        # 取值，搜索范围
+        temp_game_ids =  get_id_list_from_index_and_filter(id_1,id_2) 
+        
+        # 搜索
+        self.new_game_list_to_show = func_for_search(search_string,search_object_list=[temp_game_ids,],use_re=use_re,ignore_case=ignore_case,search_columns=search_columns)
+        
+        # 排序
+        self.new_func_for_sort()
+
+        # 数量信号
+        self.new_func_numbers_changed()
+
+        self.endResetModel()
+
+        # 发送信号
+        self.new_signal_time_for_choose_remember_game.emit()
+
+    def new_func_clear_all_data(self):
+        print("clear data")
+        self.new_game_list_to_show = []
+
+    def new_func_cancel_search(self):
+        if not self.new_search_flag:
+            return
+        
+        self.new_search_flag = False
+
+        id_1,id_2 = self.new_remember_index_id_1,self.new_remember_index_id_2
+        self.new_func_show_by_index(id_1,id_2)
+    
+    def new_func_numbers_changed(self):
+        game_list_number = len(self.new_game_list_to_show)
+        self.singalGamelistNumberChanged.emit(game_list_number)
+
+    def new_func_get_id_and_item_by_index(self, index):
+        row = index.row()
+        game_id = self.new_game_list_to_show[row]
+        return game_id, machine_dict[ game_id ] 
+
+    def new_func_get_item_id_by_index(self, index):
+        row = index.row()
+        game_id = self.new_game_list_to_show[row]
+        return game_id
+
+    def new_func_get_index_by_game_id(self,game_id,):
+        result = QModelIndex()
+
+        if not game_id:
+            return result
+        
+        if not self.new_game_list_to_show:
+            return result
+        
+        try:
+            row = self.new_game_list_to_show.index(game_id)
+        except:
+            return result
+        
+        return self.index(row)
+
+class Model_for_image(QAbstractListModel): # QAbstractItemModel
+    singalGamelistNumberChanged = Signal(int)
+    new_signal_time_for_choose_remember_game = Signal() 
+    new_signal_need_reload_gamelist = Signal()
+
+    def __init__(self,*args,**kwargs):
+        super().__init__(*args,**kwargs)
+        self.setObjectName("modelForImage")
+
+        self.new_game_list_to_show = []
+
+        self.new_remember_index_id_1 = ""
+        self.new_remember_index_id_2 = ""
+        self.new_search_flag = False
+
+        #
+        self.new_zip_file_path = ""
+        self.new_zip_opened_file = None
+        self.new_zip_path = None
+
+    def new_func_get_image_from_folders(self,game_id):
+        # not finished
+        # not used
+
+        if not game_id:
+            return None
+        
+        image_folder_path = the_variables.extra_image_zip_path["extra_image_folder_path/image_"+str(the_variables.image_dockwidget_numbers)]
+
+        if not image_folder_path:
+            return None
+
+        pass
+
+    def new_func_get_image_from_zip(self,game_id):
+        if not game_id:
+            return None
+        
+        if not self.new_zip_path:
+            return None
+        
+        image_data = None
+
+        image_file_path = game_id+".png"
+        file_path_in_zip = self.new_zip_path / image_file_path
+        if file_path_in_zip.exists() and file_path_in_zip.is_file():
+            try:
+                image_data = file_path_in_zip.read_bytes()
+            except:
+                image_data = None
+        else:# 再找一下主版本
+            if game_id in clone_set:
+                parent_id = clone_to_parent[game_id]
+
+                image_file_path = parent_id+".png"
+                file_path_in_zip = self.new_zip_path / image_file_path
+                if file_path_in_zip.exists() and file_path_in_zip.is_file():
+                    try:
+                        image_data = file_path_in_zip.read_bytes()
+                    except:
+                        image_data = None
+
+        if image_data:
+            pixmap=QPixmap()
+            if not pixmap.loadFromData(image_data) :
+                return empty_image_pixmap_for_image_table
+            if pixmap.isNull():
+                return empty_image_pixmap_for_image_table
+            if pixmap.width() == image_width_for_image_table or pixmap.height() == image_height_for_image_table:
+                return pixmap
+            
+            new_empty_pixmap_to_be_paint = empty_image_pixmap_for_image_table.copy()
+            painter = QPainter(new_empty_pixmap_to_be_paint)
+            painter.setRenderHint(QPainter.RenderHint.SmoothPixmapTransform)
+
+            # 计算缩放尺寸
+            original_width = pixmap.width()
+            original_height = pixmap.height()
+            # 计算缩放比例
+            ratio_w = image_width_for_image_table / original_width
+            ratio_h = image_height_for_image_table / original_height
+            # 选择较小的比例以保持宽高比
+            scale = min(ratio_w, ratio_h)
+            # 新的尺寸
+            new_width = int(original_width * scale)
+            new_height = int(original_height * scale)
+            if new_width > image_width_for_image_table:   new_width = image_width_for_image_table
+            if new_height > image_height_for_image_table: new_height = image_height_for_image_table            
+            # 顶点位置 (x,y)
+            x = int((image_width_for_image_table - new_width) / 2)
+            y = int((image_height_for_image_table - new_height) / 2)
+            if x < 0: x=0
+            if y < 0: y=0
+
+            painter.drawPixmap(x, y,new_width,new_height,pixmap)
+            painter.end()
+
+            return new_empty_pixmap_to_be_paint
+
+        return empty_image_pixmap_for_image_table
+
+    # 显示此列表时，打开 zip 文件
+    # 隐藏此列表时，关闭 zip 文件
+    # central widget 里 操作
+    def new_func_open_zip(self,):
+
+        zip_file_path = the_variables.extra_image_zip_path["extra_image_zip_path/image_"+str(the_variables.image_dockwidget_numbers)]
+
+        if not zip_file_path:
+            return
+
+        if not os.path.isfile(zip_file_path):
+            return
+
+        try:
+            self.new_zip_opened_file = zipfile.ZipFile(zip_file_path, mode='r',  allowZip64=True,)
+            self.new_zip_file_path = zip_file_path
+            print("open zip file :",self.new_zip_file_path)
+            self.new_zip_path = zipfile.Path(self.new_zip_opened_file)
+        except:
+            self.new_zip_file_path = ""
+            self.new_zip_opened_file = None
+            self.new_zip_path = None
+
+            exc_type, exc_value, exc_traceback = sys.exc_info()
+            print(traceback.print_exception(exc_type, exc_value, exc_traceback))            
+
+    def new_func_close_zip(self):
+        if self.new_zip_opened_file is not None:
+            try:
+                self.new_zip_opened_file.close()
+                print("close zip file :",self.new_zip_file_path)
+                self.new_zip_opened_file = None
+                self.new_zip_file_path = ""
+                self.new_zip_path = None
+            except:
+                print("close zip file error")
+
+                exc_type, exc_value, exc_traceback = sys.exc_info()
+                print(traceback.print_exception(exc_type, exc_value, exc_traceback))
+
+    def data(self, index, role):
+        if role == Qt.DisplayRole:
+            # translation_column_index
+            game_id = self.new_game_list_to_show[index.row()]
+            return game_id + " - " +  machine_dict[game_id][translation_column_index]
+
+        elif role == Qt.DecorationRole:
+            
+            return self.new_func_get_image_from_zip( self.new_game_list_to_show[index.row()] )
 
         elif role == Qt.ToolTipRole:
             return self.new_game_list_to_show[index.row()]

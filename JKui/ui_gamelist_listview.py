@@ -17,13 +17,14 @@ class My_Icon_Table(QListView):
         #self.setViewMode(QListView.ListMode)
         
         self.setUniformItemSizes(True)
+
+        self.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
         
         #self.setIconSize(QSize(32,32))
         #self.setGridSize(QSize(120,60))
 
         # 间隔
         self.setSpacing(the_variables.spacing_for_icon_table)
-        #self.setSpacing(15)
 
         self.setTextElideMode(Qt.ElideNone) 
         # 默认文字省略
@@ -263,3 +264,30 @@ class My_Icon_Table(QListView):
 
         ###
         super().keyPressEvent(event)
+
+
+class My_Image_Table(My_Icon_Table):
+    def __init__(self,*args,**kwargs ):
+        super().__init__(*args,**kwargs)
+
+        #self.setIconSize(QSize(400,300))
+        #self.setGridSize(QSize(120,60))
+
+        # 间距
+        self.setSpacing(the_variables.sapcing_for_image_table)
+
+        self.setTextElideMode(Qt.ElideRight) 
+
+        self.setVerticalScrollMode(QAbstractItemView.ScrollPerItem)
+        #self.setVerticalScrollMode(QAbstractItemView.ScrollPerPixel)
+        #self.verticalScrollBar().setSingleStep(1)
+        print("-------")
+        print("pageStep",self.verticalScrollBar().pageStep())
+        print("singleStep",self.verticalScrollBar().singleStep())
+    def new_func(self):
+        model = ui_models.Model_for_image(self)
+        self.setModel(model)
+
+        self.setObjectName("image_table")
+        self.model().new_signal_time_for_choose_remember_game.connect(self.new_func_scrollto_to_last_game)
+

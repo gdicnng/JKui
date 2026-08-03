@@ -235,6 +235,30 @@ class TheMainWindow(QMainWindow):
         if type(spacing_for_icon_table) is int:
             if spacing_for_icon_table > 0:
                 the_variables.spacing_for_icon_table = spacing_for_icon_table
+        # 单元格间距（图片列表）
+        try:
+            sapcing_for_image_table = self.new_settings.value("gamelist/sapcing_for_image_table",type=int) # 取值到 the_variables.sapcing_for_image_table
+        except:
+            sapcing_for_image_table = 0
+        if type(sapcing_for_image_table) is int:
+            if sapcing_for_image_table > 0:
+                the_variables.sapcing_for_image_table = sapcing_for_image_table
+        # 图片宽度（图片列表）
+        try:
+            image_width_for_image_table = self.new_settings.value("gamelist/image_width_for_image_table",type=int) # 取值到 the_variables.sapcing_for_image_table
+        except:
+            image_width_for_image_table = 0
+        if type(image_width_for_image_table) is int:
+            if image_width_for_image_table > 0:
+                ui_models.image_width_for_image_table = image_width_for_image_table
+        # 图片高度（图片列表）
+        try:
+            image_height_for_image_table = self.new_settings.value("gamelist/image_height_for_image_table",type=int) # 取值到 the_variables.sapcing_for_image_table
+        except:
+            image_height_for_image_table = 0
+        if type(image_height_for_image_table) is int:
+            if image_height_for_image_table > 0:
+                ui_models.image_height_for_image_table = image_height_for_image_table
         #
         self.new_menu_font.addSeparator()
         action_set_icon_size = QAction("设置图标大小",self,)
@@ -324,6 +348,11 @@ class TheMainWindow(QMainWindow):
         self.new_action_show_icon_table = QAction("显示 图标模式",self,)
         self.new_action_show_icon_table.triggered.connect( self.centralWidget().new_func_show_icon_table )
         self.new_menu_gamelist.addAction(self.new_action_show_icon_table)
+        # 游戏列表 显示 image table
+        self.new_action_show_image_table = QAction("显示 图片模式",self,)
+        self.new_action_show_image_table.triggered.connect( self.centralWidget().new_func_show_image_table )
+        self.new_menu_gamelist.addAction(self.new_action_show_image_table)
+        self.new_menu_gamelist.addSeparator()
         # 游戏列表 本地化排序
         self.new_menu_gamelist.addSeparator()
         action_set_sort_use_locale = QAction("本地化排序(仅翻译这一列)",self,)
@@ -585,12 +614,16 @@ class TheMainWindow(QMainWindow):
         new_action_treeview.triggered.connect( self.centralWidget().new_func_show_treeview )
         new_action_icon_table = QAction("5",self,)
         new_action_icon_table.triggered.connect( self.centralWidget().new_func_show_icon_table )
+        new_action_image_table = QAction("6",self,)
+        new_action_image_table.triggered.connect( self.centralWidget().new_func_show_image_table )
 
         self.new_toolbar_for_gamelist.addAction(new_action_tableview)
         self.new_toolbar_for_gamelist.addAction(new_action_tableview_2_level)
         self.new_toolbar_for_gamelist.addAction(new_action_tableview_2_level_tree_like)
         self.new_toolbar_for_gamelist.addAction(new_action_treeview)
         self.new_toolbar_for_gamelist.addAction(new_action_icon_table)
+        self.new_toolbar_for_gamelist.addAction(new_action_image_table)
+
         #self.new_toolbar_for_gamelist.addSeparator()
 
         self.new_tool_bar_for_search = ui_small_windows.Toolbars_for_search(self)
@@ -852,7 +885,7 @@ class TheMainWindow(QMainWindow):
         self.centralWidget().new_func_for_load_settings() # 游戏列表状态恢复
         self.new_func_set_row_height_for_tableview(at_start=True) # tableview 行高
         self.new_func_set_internal_qss() # treeview 行高，以及字体等，在 qss 中设置
-        self.new_func_for_set_icon_table_spacing() # 图标列表，单元格间距
+        self.new_func_for_set_listview_spacing() # 图标列表，单元格间距
 
         # last game ，这个得移动到启动最后，不然周边会使用 game_id 加载内容
         try:last_game = self.new_settings.value("game_remember",type=str)
@@ -1378,12 +1411,13 @@ class TheMainWindow(QMainWindow):
             self.new_dialog_for_set_gamelist_icon_size = ui_small_windows.Dialog_for_set_gamelist_icon_size(self.new_settings,self,)
         self.new_dialog_for_set_gamelist_icon_size.new_func_set_values()
         self.new_dialog_for_set_gamelist_icon_size.exec()
-    def new_func_for_set_icon_table_spacing(self):
+    def new_func_for_set_listview_spacing(self):
         central_widget = self.centralWidget()
 
         # setSpacing
         # Setting this property when the view is visible will cause the items to be laid out again.
         central_widget.new_ui_gamelist_icon_table.setSpacing(the_variables.spacing_for_icon_table)
+        central_widget.new_ui_gamelist_image_table.setSpacing(the_variables.sapcing_for_image_table)
 
     # menu 显示 python 版本
     @Slot()
@@ -1636,6 +1670,9 @@ class TheMainWindow(QMainWindow):
         self.new_func_gamelist_number_changed(game_list_number)
     @Slot(int)
     def on_modelForIcon_singalGamelistNumberChanged(self,game_list_number):
+        self.new_func_gamelist_number_changed(game_list_number)
+    @Slot(int)
+    def on_modelForImage_singalGamelistNumberChanged(self,game_list_number):
         self.new_func_gamelist_number_changed(game_list_number)        
     #
     @Slot(int)
@@ -1659,8 +1696,8 @@ class TheMainWindow(QMainWindow):
                 qss_string.append(row_height_qss)
 
         # 字体
-        the_keys = ["all","gamelist",            "extra",     "extra_command",             "extra_command_english",             "QHeaderView",]
-        the_prefix=["*",  "QTreeView,QTableView","QTextEdit", "QTextEdit#textedit_command","QTextEdit#textedit_command_english","QHeaderView",]
+        the_keys = ["all","gamelist",                      "extra",     "extra_command",             "extra_command_english",             "QHeaderView",]
+        the_prefix=["*",  "QTreeView,QTableView,QListView","QTextEdit", "QTextEdit#textedit_command","QTextEdit#textedit_command_english","QHeaderView",]
         for key,prefix in zip(the_keys,the_prefix):
             font_family = self.new_settings.value(f"font_family/{key}",)
             try:
