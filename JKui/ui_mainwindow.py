@@ -245,7 +245,7 @@ class TheMainWindow(QMainWindow):
                 the_variables.sapcing_for_image_table = sapcing_for_image_table
         # 图片宽度（图片列表）
         try:
-            image_width_for_image_table = self.new_settings.value("gamelist/image_width_for_image_table",type=int) # 取值到 the_variables.sapcing_for_image_table
+            image_width_for_image_table = self.new_settings.value("gamelist/image_width_for_image_table",type=int) 
         except:
             image_width_for_image_table = 0
         if type(image_width_for_image_table) is int:
@@ -253,15 +253,40 @@ class TheMainWindow(QMainWindow):
                 ui_models.image_width_for_image_table = image_width_for_image_table
         # 图片高度（图片列表）
         try:
-            image_height_for_image_table = self.new_settings.value("gamelist/image_height_for_image_table",type=int) # 取值到 the_variables.sapcing_for_image_table
+            image_height_for_image_table = self.new_settings.value("gamelist/image_height_for_image_table",type=int) 
         except:
             image_height_for_image_table = 0
         if type(image_height_for_image_table) is int:
             if image_height_for_image_table > 0:
                 ui_models.image_height_for_image_table = image_height_for_image_table
-        #
+        # 文字区域高度 （图片列表）
+        try:
+            text_height_for_image_table = self.new_settings.value("gamelist/text_height_for_image_table",type=int)
+        except:
+            text_height_for_image_table = 0
+        if type(text_height_for_image_table) is int:
+            if text_height_for_image_table > 0:
+                ui_models.text_height_for_image_table = text_height_for_image_table
+        # 图标列表，文字区域宽度（如果比图标宽度小，自动取值于图标宽度）
+        try:
+            text_width_for_icon_table = self.new_settings.value("gamelist/text_width_for_icon_table",type=int)
+        except:
+            text_width_for_icon_table = 0
+        if type(text_width_for_icon_table) is int:
+            if text_width_for_icon_table > 0:
+                ui_models.text_width_for_icon_table = text_width_for_icon_table
+        # 图标列表，文字区域高度
+        try:
+            text_height_for_icon_table = self.new_settings.value("gamelist/text_height_for_icon_table",type=int)
+        except:
+            text_height_for_icon_table = 0
+        if type(text_height_for_icon_table) is int:
+            if text_height_for_icon_table > 0:
+                ui_models.text_height_for_icon_table = text_height_for_icon_table
+        # 图标大小（普通列表、图标列表）、图片大小（普通列表、图标列表）、图片大小（图片列表）",self,)
+        
         self.new_menu_font.addSeparator()
-        action_set_icon_size = QAction("设置图标大小",self,)
+        action_set_icon_size = QAction("设置 图标大小 、图片大小 等",self,)
         action_set_icon_size.setCheckable(False)
         action_set_icon_size.triggered.connect( self.new_func_for_set_icon_size )
         self.new_menu_font.addAction(action_set_icon_size)

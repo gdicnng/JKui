@@ -3,6 +3,7 @@ import zipfile
 import re
 import shutil
 import time
+import io
 
 import ui_models
 
@@ -386,15 +387,23 @@ def add_items_to_external_index(game_id_set,id_1,id_2=""): # set
 
 
 
-def load_icons_from_zip(icon_zip_path,all_set=set()):
+def load_icons_from_zip(icon_zip_path,all_set=None):
+    if all_set is None:
+        all_set = set()
+    
     # 读取所有文件，二进制数据
     result = dict()
 
     if not os.path.isfile(icon_zip_path):
         return result
+
+    io_data = io.BytesIO()
     
     try:
         file = open(icon_zip_path, 'rb')
+        io_data.write(file.read())
+        io_data.seek(0)
+        file.close()
     except:
         return result
     
@@ -403,7 +412,7 @@ def load_icons_from_zip(icon_zip_path,all_set=set()):
     else:
         limitation = False
 
-    zip_ref = zipfile.ZipFile(file, 'r')
+    zip_ref = zipfile.ZipFile(io_data, 'r')
     
     for file_name in zip_ref.namelist():
         if "/" in file_name:
@@ -412,7 +421,7 @@ def load_icons_from_zip(icon_zip_path,all_set=set()):
         if not file_name.endswith(".ico"):
             continue
 
-        id_name = file_name.split(".")[0]
+        id_name = file_name[:-4]
         
         if limitation:
             if id_name in all_set:
@@ -433,7 +442,7 @@ def load_icons_from_zip(icon_zip_path,all_set=set()):
 
     try:
         zip_ref.close()
-        file.close()
+        io_data.close()
     except:
         pass
 

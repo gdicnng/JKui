@@ -84,7 +84,7 @@ icon_not_have_pixmap = None
 icon_extra_resource = dict()
 # 第三方图标，全部读取到此
 # the_variables.icon_size # 列表图标大小，当时在 the_variables 文件里定义的
-icon_size_for_icon_table = 32 # 图标视图 的 图标大小
+
 icon_red_pixmap_for_icon_table = None
 icon_green_pixmap_for_icon_table = None
 icon_yellow_pixmap_for_icon_table = None
@@ -92,8 +92,12 @@ icon_black_pixmap_for_icon_table = None
 icon_not_have_pixmap_for_icon_table = None
 image_width_for_image_table = 400
 image_height_for_image_table = 300
-empty_image_pixmap_for_image_table = None
+text_height_for_image_table = 30 # 图片列表 的 文本行高
+empty_image_pixmap_for_image_table = None # 这个没用了
 
+icon_size_for_icon_table = 32 # 图标视图 的 图标大小
+text_width_for_icon_table = 40 # 图标列表 的 文本宽度；与图标宽度 ，两者最大值 做为单元格宽度
+text_height_for_icon_table = 30 # 图标列表 的 文本行高
 
 
 # new_table_type 
@@ -170,7 +174,7 @@ def load_and_resize_internal_icon():
     global icon_red_pixmap, icon_green_pixmap, icon_yellow_pixmap, icon_black_pixmap,icon_not_have_pixmap
     global icon_red_pixmap_for_icon_table, icon_green_pixmap_for_icon_table, icon_yellow_pixmap_for_icon_table
     global icon_black_pixmap_for_icon_table,icon_not_have_pixmap_for_icon_table
-    global empty_image_pixmap_for_image_table
+    #global empty_image_pixmap_for_image_table
 
     icon_size =QSize(the_variables.icon_size,the_variables.icon_size)
     icon_size_2 = QSize(icon_size_for_icon_table,icon_size_for_icon_table)
@@ -298,8 +302,8 @@ def load_and_resize_internal_icon():
     except:
         pass
 
-    empty_image_pixmap_for_image_table = QPixmap(image_width_for_image_table,image_height_for_image_table,)
-    empty_image_pixmap_for_image_table.fill(Qt.transparent)
+    #empty_image_pixmap_for_image_table = QPixmap(image_width_for_image_table,image_height_for_image_table,)
+    #empty_image_pixmap_for_image_table.fill(Qt.transparent)
 
 
 def update_some_value():
@@ -312,7 +316,7 @@ def update_some_value():
     global savestate_column_index
     global sourcefile_column_index
 
-    global parent_have_more_than_1_clone_set
+    #global parent_have_more_than_1_clone_set
     #global parent_to_clone__keys_set
 
     try:
@@ -368,7 +372,7 @@ def update_some_value():
         temp = set( temp )
         
         return temp
-    parent_have_more_than_1_clone_set = get_parent_have_more_than_1_children()
+    #parent_have_more_than_1_clone_set = get_parent_have_more_than_1_children()
 
     #parent_to_clone__keys_set = set( parent_to_clone.keys() )
 
@@ -737,15 +741,15 @@ def get_icon_for_gamelist_table(game_id):
         if game_id in icon_extra_resource:
             try:
                 user_icon = QPixmap()
-                user_icon.loadFromData(icon_extra_resource[game_id])
-                the_icon = user_icon
-                if (user_icon.width() != the_variables.icon_size) or (user_icon.height() != the_variables.icon_size):
-                    scaled_pixmap = user_icon.scaled(
-                        the_variables.icon_size,the_variables.icon_size,                  # 目标大小
-                        Qt.KeepAspectRatio,
-                        Qt.SmoothTransformation
-                        )
-                    the_icon = scaled_pixmap
+                if user_icon.loadFromData(icon_extra_resource[game_id],format="ICO"):
+                    the_icon = user_icon
+                    if (user_icon.width() != the_variables.icon_size) or (user_icon.height() != the_variables.icon_size):
+                        scaled_pixmap = user_icon.scaled(
+                            the_variables.icon_size,the_variables.icon_size,                  # 目标大小
+                            Qt.KeepAspectRatio,
+                            Qt.SmoothTransformation
+                            )
+                        the_icon = scaled_pixmap
             except:
                 pass
  
@@ -784,15 +788,15 @@ def get_icon_for_gamelist_table_fake_2_level(game_id):
         if game_id in icon_extra_resource:
             try:
                 user_icon = QPixmap()
-                user_icon.loadFromData(icon_extra_resource[game_id])
-                the_icon = user_icon
-                if (user_icon.width() != the_variables.icon_size) or (user_icon.height() != the_variables.icon_size):
-                    scaled_pixmap = user_icon.scaled(
-                        the_variables.icon_size,the_variables.icon_size,                  # 目标大小
-                        Qt.KeepAspectRatio,            # 保持宽高比[reference:5]
-                        Qt.SmoothTransformation        # 平滑变换[reference:6]
-                        )
-                    the_icon = scaled_pixmap
+                if user_icon.loadFromData(icon_extra_resource[game_id],format="ICO"):
+                    the_icon = user_icon
+                    if (user_icon.width() != the_variables.icon_size) or (user_icon.height() != the_variables.icon_size):
+                        scaled_pixmap = user_icon.scaled(
+                            the_variables.icon_size,the_variables.icon_size,                  # 目标大小
+                            Qt.KeepAspectRatio,            # 保持宽高比[reference:5]
+                            Qt.SmoothTransformation        # 平滑变换[reference:6]
+                            )
+                        the_icon = scaled_pixmap
             except:
                 pass
  
@@ -829,15 +833,17 @@ def get_icon_for_icon_table(game_id):
     if game_id in icon_extra_resource:
         try:
             user_icon = QPixmap()
-            user_icon.loadFromData(icon_extra_resource[game_id])
-            the_icon = user_icon
-            if (user_icon.width() != icon_size_for_icon_table) or (user_icon.height() != icon_size_for_icon_table):
-                scaled_pixmap = user_icon.scaled(
-                    icon_size_for_icon_table,icon_size_for_icon_table,# 目标大小
-                    Qt.KeepAspectRatio,
-                    Qt.SmoothTransformation
-                    )
-                the_icon = scaled_pixmap
+            if user_icon.loadFromData(icon_extra_resource[game_id],format="ICO"):
+                the_icon = user_icon
+                if (user_icon.width() != icon_size_for_icon_table) or (user_icon.height() != icon_size_for_icon_table):
+                    scaled_pixmap = user_icon.scaled(
+                        icon_size_for_icon_table,icon_size_for_icon_table,# 目标大小
+                        Qt.KeepAspectRatio,
+                        Qt.SmoothTransformation
+                        )
+                    the_icon = scaled_pixmap
+            else:
+                print(game_id,"   loadFromData failed !")
         except:
             pass
  
@@ -1395,7 +1401,6 @@ class Model_for_table_view(QAbstractTableModel):
             misc_funcs.delect_items_from_external_index(result,id_1,id_2)
 
             self.new_signal_need_reload_gamelist.emit()
-
 
 class Model_for_table_view_2_level(QAbstractTableModel):
     
@@ -1989,7 +1994,6 @@ class Model_for_table_view_2_level(QAbstractTableModel):
             misc_funcs.delect_items_from_external_index(result,id_1,id_2)
 
             self.new_signal_need_reload_gamelist.emit()
-
 
 class Model_for_table_view_2_level_tree_like(QAbstractTableModel):
     
@@ -2702,7 +2706,6 @@ class Model_for_table_view_2_level_tree_like(QAbstractTableModel):
 
             self.new_signal_need_reload_gamelist.emit()
 
-
 class Model_for_tree_view(QAbstractItemModel):
     singalGamelistNumberChanged = Signal(int)
     new_signal_time_for_choose_remember_game = Signal() # 发信号，后续看是否需要定位到上次选中的游戏
@@ -3264,6 +3267,85 @@ class Model_for_tree_view(QAbstractItemModel):
             self.new_signal_need_reload_gamelist.emit()
     #
 
+class Delegate_for_Model_of_icon(QStyledItemDelegate):
+    def __init__(self, parent=None, margin=5):
+        super().__init__(parent)
+
+    def paint(self, painter, option, index):
+        if not index.isValid():
+            return
+
+        painter.save()
+        painter.setRenderHint(QPainter.RenderHint.SmoothPixmapTransform)
+
+        # 1. 绘制选中/悬停背景 (保持原生风格)
+        if option.state & QStyle.State_Selected:
+            painter.fillRect(option.rect, option.palette.highlight())
+        #elif option.state & QStyle.State_MouseOver:
+        #    painter.fillRect(option.rect, option.palette.alternateBase())
+
+        # 2. 获取数据
+        the_image = index.data(Qt.DecorationRole)
+        the_text = index.data(Qt.DisplayRole)
+
+        if the_image is None:
+            pass
+        else:
+            # 图标尺寸已经调整好了
+            pixmap = the_image
+            if not pixmap.isNull():
+                width = pixmap.width()
+
+                x0 = option.rect.left()
+                y0 = option.rect.top()
+                w0 = max(icon_size_for_icon_table,text_width_for_icon_table)                
+
+                if w0 == width:
+                    # 顶点移移量  x
+                    x = 0              
+                else:
+                    # 顶点移移量  x
+                    x = int((w0 - icon_size_for_icon_table) / 2)
+                    if x < 0: x=0
+                painter.drawPixmap(x0 + x, y0, icon_size_for_icon_table, icon_size_for_icon_table, pixmap)
+        
+        if the_text:
+
+            # 文本区域从图标下方开始
+            #print()
+            #print(option.rect)
+            text_rect = QRect(option.rect)
+            text_rect.setHeight(text_height_for_icon_table)
+            #print(text_rect)
+            text_rect.translate( 0 , icon_size_for_icon_table )
+            #the_offset = 3
+            #if text_rect.width() > the_offset:
+            #    text_rect.setWidth(text_rect.width() - the_offset)
+            #    text_rect.translate( the_offset , 0 )
+            #print(text_rect)
+
+            # 5. 绘制文本 (自动换行)
+            if the_text:
+                # 设置文字颜色
+                if option.state & QStyle.State_Selected:
+                    painter.setPen(option.palette.highlightedText().color())
+                else:
+                    painter.setPen(option.palette.text().color())
+                #painter.drawText(text_rect, Qt.AlignHCenter | Qt.AlignVCenter | Qt.TextSingleLine, the_text)
+                #painter.drawText(text_rect, Qt.AlignVCenter | Qt.TextSingleLine, the_text)
+                metrics = QFontMetrics(painter.font())
+                elided_text = metrics.elidedText(the_text, Qt.TextElideMode.ElideRight, text_rect.width()) 
+                painter.drawText(text_rect, Qt.AlignHCenter | Qt.AlignVCenter | Qt.TextSingleLine, elided_text) 
+
+        painter.restore()
+
+    def sizeHint(self, option, index):
+        """为每个项目计算合适的尺寸"""
+        if not index.isValid():
+            return QSize(0, 0)
+        
+        return QSize( max(icon_size_for_icon_table,text_width_for_icon_table), icon_size_for_icon_table + text_height_for_icon_table)
+
 class Model_for_icon(QAbstractListModel): # QAbstractItemModel
     singalGamelistNumberChanged = Signal(int)
     new_signal_time_for_choose_remember_game = Signal() 
@@ -3279,7 +3361,7 @@ class Model_for_icon(QAbstractListModel): # QAbstractItemModel
         self.new_remember_index_id_2 = ""
         self.new_search_flag = False
 
-    def data(self, index, role):
+    def data(self, index, role=Qt.DisplayRole):
         if role == Qt.DisplayRole:
             return self.new_game_list_to_show[index.row()]
 
@@ -3423,6 +3505,121 @@ class Model_for_icon(QAbstractListModel): # QAbstractItemModel
         
         return self.index(row)
 
+    # 删除一个游戏，从表格菜单中选择删除
+    def new_func_remove_one_item_by_index(self,index):
+        if not index_edit_mode:
+            return
+
+        id_1,id_2 = self.new_remember_index_id_1,self.new_remember_index_id_2
+        if not id_1:
+            return
+        if id_1 not in editable_index_files:
+            return
+
+        if index.isValid():
+
+            game_id = self.new_func_get_item_id_by_index(index)
+
+            ###################
+            # 目录文件，删除
+            misc_funcs.delect_one_item_from_external_index(game_id,id_1,id_2)
+
+            ###################
+            # 重置列表
+            self.new_signal_need_reload_gamelist.emit()
+    #
+
+class Delegate_for_Model_of_image(QStyledItemDelegate):
+    def __init__(self, parent=None, margin=5):
+        super().__init__(parent)
+
+    def paint(self, painter, option, index):
+        if not index.isValid():
+            return
+
+        painter.save()
+        painter.setRenderHint(QPainter.RenderHint.SmoothPixmapTransform)
+
+        # 1. 绘制选中/悬停背景 (保持原生风格)
+        if option.state & QStyle.State_Selected:
+            painter.fillRect(option.rect, option.palette.highlight())
+        #elif option.state & QStyle.State_MouseOver:
+        #    painter.fillRect(option.rect, option.palette.alternateBase())
+
+        # 2. 获取数据
+        the_image = index.data(Qt.DecorationRole)
+        the_text = index.data(Qt.DisplayRole)
+
+        if the_image is None:
+            pass
+        else:
+            pixmap = the_image
+            # 计算缩放尺寸
+            original_width = pixmap.width()
+            original_height = pixmap.height()
+            if (original_width == image_width_for_image_table) and (original_height == image_height_for_image_table):
+                x0 = option.rect.left()
+                y0 = option.rect.top()
+                painter.drawPixmap(x0 , y0 ,image_width_for_image_table,image_height_for_image_table,pixmap)
+            else:
+                # 计算缩放比例
+                ratio_w = image_width_for_image_table / original_width
+                ratio_h = image_height_for_image_table / original_height
+                # 选择较小的比例以保持宽高比
+                scale = min(ratio_w, ratio_h)
+                # 新的尺寸
+                new_width = int(original_width * scale)
+                new_height = int(original_height * scale)
+                if new_width > image_width_for_image_table:   new_width = image_width_for_image_table
+                if new_height > image_height_for_image_table: new_height = image_height_for_image_table            
+                # 顶点位置 偏移量 x,y
+                x = int((image_width_for_image_table - new_width) / 2)
+                y = int((image_height_for_image_table - new_height) / 2)
+                if x < 0: x=0
+                if y < 0: y=0
+
+                x0 = option.rect.left()
+                y0 = option.rect.top()
+                #print(new_width,new_height)
+                painter.drawPixmap(x0 + x, y0 + y,new_width,new_height,pixmap)
+
+        if the_text:
+
+            # 文本区域从图标下方开始
+            #print()
+            #print(option.rect)
+            text_rect = QRect(option.rect)
+            text_rect.setHeight(text_height_for_image_table)
+            #print(text_rect)
+            text_rect.translate( 0 , image_height_for_image_table )
+            #the_offset = 3
+            #if text_rect.width() > the_offset:
+            #    text_rect.setWidth(text_rect.width() - the_offset)
+            #    text_rect.translate( the_offset , 0 )
+            #print(text_rect)
+
+            # 5. 绘制文本 (自动换行)
+            if the_text:
+                # 设置文字颜色
+                if option.state & QStyle.State_Selected:
+                    painter.setPen(option.palette.highlightedText().color())
+                else:
+                    painter.setPen(option.palette.text().color())
+                #painter.drawText(text_rect, Qt.AlignHCenter | Qt.AlignVCenter | Qt.TextSingleLine, the_text)
+                #painter.drawText(text_rect, Qt.AlignVCenter | Qt.TextSingleLine, the_text)
+                metrics = QFontMetrics(painter.font())
+                elided_text = metrics.elidedText(the_text, Qt.TextElideMode.ElideRight, text_rect.width()) 
+                painter.drawText(text_rect, Qt.AlignHCenter | Qt.AlignVCenter | Qt.TextSingleLine, elided_text) 
+
+        painter.restore()
+
+    def sizeHint(self, option, index):
+        """为每个项目计算合适的尺寸"""
+        if not index.isValid():
+            return QSize(0, 0)
+        
+        return QSize(image_width_for_image_table, image_height_for_image_table + text_height_for_image_table)
+
 class Model_for_image(QAbstractListModel): # QAbstractItemModel
     singalGamelistNumberChanged = Signal(int)
     new_signal_time_for_choose_remember_game = Signal() 
@@ -3487,42 +3684,11 @@ class Model_for_image(QAbstractListModel): # QAbstractItemModel
 
         if image_data:
             pixmap=QPixmap()
-            if not pixmap.loadFromData(image_data) :
-                return empty_image_pixmap_for_image_table
-            if pixmap.isNull():
-                return empty_image_pixmap_for_image_table
-            if pixmap.width() == image_width_for_image_table or pixmap.height() == image_height_for_image_table:
-                return pixmap
-            
-            new_empty_pixmap_to_be_paint = empty_image_pixmap_for_image_table.copy()
-            painter = QPainter(new_empty_pixmap_to_be_paint)
-            painter.setRenderHint(QPainter.RenderHint.SmoothPixmapTransform)
+            if pixmap.loadFromData(image_data) :
+                if not pixmap.isNull():
+                    return pixmap
 
-            # 计算缩放尺寸
-            original_width = pixmap.width()
-            original_height = pixmap.height()
-            # 计算缩放比例
-            ratio_w = image_width_for_image_table / original_width
-            ratio_h = image_height_for_image_table / original_height
-            # 选择较小的比例以保持宽高比
-            scale = min(ratio_w, ratio_h)
-            # 新的尺寸
-            new_width = int(original_width * scale)
-            new_height = int(original_height * scale)
-            if new_width > image_width_for_image_table:   new_width = image_width_for_image_table
-            if new_height > image_height_for_image_table: new_height = image_height_for_image_table            
-            # 顶点位置 (x,y)
-            x = int((image_width_for_image_table - new_width) / 2)
-            y = int((image_height_for_image_table - new_height) / 2)
-            if x < 0: x=0
-            if y < 0: y=0
-
-            painter.drawPixmap(x, y,new_width,new_height,pixmap)
-            painter.end()
-
-            return new_empty_pixmap_to_be_paint
-
-        return empty_image_pixmap_for_image_table
+        return None
 
     # 显示此列表时，打开 zip 文件
     # 隐藏此列表时，关闭 zip 文件
@@ -3540,8 +3706,8 @@ class Model_for_image(QAbstractListModel): # QAbstractItemModel
         try:
             self.new_zip_opened_file = zipfile.ZipFile(zip_file_path, mode='r',  allowZip64=True,)
             self.new_zip_file_path = zip_file_path
-            print("open zip file :",self.new_zip_file_path)
             self.new_zip_path = zipfile.Path(self.new_zip_opened_file)
+            print("open zip file :",self.new_zip_file_path)
         except:
             self.new_zip_file_path = ""
             self.new_zip_opened_file = None
@@ -3564,7 +3730,7 @@ class Model_for_image(QAbstractListModel): # QAbstractItemModel
                 exc_type, exc_value, exc_traceback = sys.exc_info()
                 print(traceback.print_exception(exc_type, exc_value, exc_traceback))
 
-    def data(self, index, role):
+    def data(self, index, role=Qt.DisplayRole):
         if role == Qt.DisplayRole:
             # translation_column_index
             game_id = self.new_game_list_to_show[index.row()]
@@ -3575,7 +3741,7 @@ class Model_for_image(QAbstractListModel): # QAbstractItemModel
             return self.new_func_get_image_from_zip( self.new_game_list_to_show[index.row()] )
 
         elif role == Qt.ToolTipRole:
-            return self.new_game_list_to_show[index.row()]
+            return self.data(index,)
     
     def rowCount(self, parent ):
         return len(self.new_game_list_to_show)
@@ -3709,7 +3875,31 @@ class Model_for_image(QAbstractListModel): # QAbstractItemModel
             return result
         
         return self.index(row)
-    
+
+    # 删除一个游戏，从表格菜单中选择删除
+    def new_func_remove_one_item_by_index(self,index):
+        if not index_edit_mode:
+            return
+
+        id_1,id_2 = self.new_remember_index_id_1,self.new_remember_index_id_2
+        if not id_1:
+            return
+        if id_1 not in editable_index_files:
+            return
+
+        if index.isValid():
+
+            game_id = self.new_func_get_item_id_by_index(index)
+
+            ###################
+            # 目录文件，删除
+            misc_funcs.delect_one_item_from_external_index(game_id,id_1,id_2)
+
+            ###################
+            # 重置列表
+            self.new_signal_need_reload_gamelist.emit()
+    #
+
 #########################
 #########################
 #########################
@@ -3719,7 +3909,7 @@ class Model_for_index(QAbstractItemModel):
     def __init__(self,):
         super().__init__()
 
-    def data(self, index, role):
+    def data(self, index, role=Qt.DisplayRole):
         if not index.isValid():return None;
 
         if role == Qt.DisplayRole:
@@ -3737,6 +3927,8 @@ class Model_for_index(QAbstractItemModel):
                 if parent_id in index_has_children:
                     text =  index_has_children[parent_id][index.row()]
                     return text
+        elif role == Qt.ToolTipRole:
+            return self.data(index,)
             
     def headerData(self,section,orientation,role ):
         if role == Qt.DisplayRole:
@@ -3869,7 +4061,6 @@ class Model_for_index(QAbstractItemModel):
         self.beginResetModel()
         rebuild_index()
         self.endResetModel()
-
 
 # editable_index_list
 # editable_index_has_children = dict()

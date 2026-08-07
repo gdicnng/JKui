@@ -575,14 +575,14 @@ class Dialog_for_save_translation_file(QDialog):
                 print("write file error")
 
 
-# 菜单中 , 游戏列表 图标大小
+# 菜单中 , 游戏列表 图标大小 图片大小
 class Dialog_for_set_gamelist_icon_size(QDialog):  
 
     def __init__(self, settings,*args, **kwargs):
         super().__init__(*args, **kwargs)
         self.new_settings = settings
         
-        self.setWindowTitle("游戏列表图标")
+        self.setWindowTitle("游戏列表图标、图片 等")
 
         self.setSizeGripEnabled(True)
         
@@ -639,6 +639,30 @@ class Dialog_for_set_gamelist_icon_size(QDialog):
         sixth_row_layout.addWidget(label_6)
         sixth_row_layout.addWidget(self.new_line_edit6)
         layout.addLayout(sixth_row_layout)
+
+        # 第七行布局
+        seventh_row_layout = QHBoxLayout()
+        label_7 = QLabel("图片列表，文字区域高度:")
+        self.new_line_edit7 = QLineEdit()
+        seventh_row_layout.addWidget(label_7)
+        seventh_row_layout.addWidget(self.new_line_edit7)
+        layout.addLayout(seventh_row_layout)
+
+        # 第八行布局
+        eighth_row_layout = QHBoxLayout()
+        label_8 = QLabel("图标列表，文字区域宽度(如果比图标宽度小，自动取值于图标宽度):")
+        self.new_line_edit8 = QLineEdit()
+        eighth_row_layout.addWidget(label_8)
+        eighth_row_layout.addWidget(self.new_line_edit8)
+        layout.addLayout(eighth_row_layout)
+
+        # 第九行布局
+        ninth_row_layout = QHBoxLayout()
+        label_9 = QLabel("图标列表，文字区域高度:")
+        self.new_line_edit9 = QLineEdit()
+        ninth_row_layout.addWidget(label_9)
+        ninth_row_layout.addWidget(self.new_line_edit9)
+        layout.addLayout(ninth_row_layout)
 
         layout.addWidget(QLabel("注：设置整数,大于0 "))
 
@@ -720,6 +744,36 @@ class Dialog_for_set_gamelist_icon_size(QDialog):
             if image_height_for_image_table > 0:
                 ui_models.image_height_for_image_table = image_height_for_image_table
         self.new_line_edit6.setText(str(ui_models.image_height_for_image_table))
+
+        # 文字区域高度 （图片列表）
+        try:
+            text_height_for_image_table = self.new_settings.value("gamelist/text_height_for_image_table",type=int)
+        except:
+            text_height_for_image_table = 0
+        if type(text_height_for_image_table) is int:
+            if text_height_for_image_table > 0:
+                ui_models.text_height_for_image_table = text_height_for_image_table
+        self.new_line_edit7.setText(str(ui_models.text_height_for_image_table))
+
+        # 图标列表，文字区域宽度（如果比图标宽度小，自动取值于图标宽度）
+        try:
+            text_width_for_icon_table = self.new_settings.value("gamelist/text_width_for_icon_table",type=int)
+        except:
+            text_width_for_icon_table = 0
+        if type(text_width_for_icon_table) is int:
+            if text_width_for_icon_table > 0:
+                ui_models.text_width_for_icon_table = text_width_for_icon_table
+        self.new_line_edit8.setText(str(ui_models.text_width_for_icon_table))
+
+        # 图标列表，文字区域高度
+        try:
+            text_height_for_icon_table = self.new_settings.value("gamelist/text_height_for_icon_table",type=int)
+        except:
+            text_height_for_icon_table = 0
+        if type(text_height_for_icon_table) is int:
+            if text_height_for_icon_table > 0:
+                ui_models.text_height_for_icon_table = text_height_for_icon_table
+        self.new_line_edit9.setText(str(ui_models.text_height_for_icon_table))
         
     def new_func_for_ok(self,checked):
         settings = self.new_settings
@@ -730,6 +784,9 @@ class Dialog_for_set_gamelist_icon_size(QDialog):
         sapcing_for_image_table = self.new_line_edit4.text()
         image_width_for_image_table = self.new_line_edit5.text()
         image_height_for_image_table = self.new_line_edit6.text()
+        text_height_for_image_table = self.new_line_edit7.text()
+        text_width_for_icon_table = self.new_line_edit8.text()
+        text_height_for_icon_table = self.new_line_edit9.text()
 
         try:
             icon_size = int(icon_size)
@@ -738,14 +795,25 @@ class Dialog_for_set_gamelist_icon_size(QDialog):
             sapcing_for_image_table = int(sapcing_for_image_table)
             image_width_for_image_table = int(image_width_for_image_table)
             image_height_for_image_table = int(image_height_for_image_table)
+            text_height_for_image_table = int(text_height_for_image_table)
+            text_width_for_icon_table = int(text_width_for_icon_table)
+            text_height_for_icon_table = int(text_height_for_icon_table)
         except:
             QMessageBox.warning(self, "错误", "请输入整数,大于0")
             return
         
-        if (icon_size <= 0) or (icon_size_for_icon_table <= 0) or (spacing_for_icon_table <= 0) or (sapcing_for_image_table <= 0) or (image_width_for_image_table <= 0) or (image_height_for_image_table <= 0):
+        if (icon_size <= 0) or (icon_size_for_icon_table <= 0) or (spacing_for_icon_table <= 0) or (sapcing_for_image_table <= 0) :
             QMessageBox.warning(self, "错误", "请输入整数,大于0")
             return
-
+        #
+        if (image_width_for_image_table <= 0) or (image_height_for_image_table <= 0) or (text_height_for_image_table <= 0) or (text_width_for_icon_table <= 0):
+            QMessageBox.warning(self, "错误", "请输入整数,大于0")
+            return
+        #
+        if text_height_for_icon_table <= 0 :
+            QMessageBox.warning(self, "错误", "请输入整数,大于0")
+            return
+        
         # 赋值
         the_variables.icon_size = icon_size
         ui_models.icon_size_for_icon_table = icon_size_for_icon_table
@@ -753,6 +821,9 @@ class Dialog_for_set_gamelist_icon_size(QDialog):
         the_variables.sapcing_for_image_table = sapcing_for_image_table
         ui_models.image_width_for_image_table = image_width_for_image_table
         ui_models.image_height_for_image_table = image_height_for_image_table
+        ui_models.text_height_for_image_table = text_height_for_image_table
+        ui_models.text_width_for_icon_table = text_width_for_icon_table
+        ui_models.text_height_for_icon_table = text_height_for_icon_table
         # 保存
         settings.setValue("gamelist/icon_size_for_gamelist",icon_size)
         settings.setValue("gamelist/spacing_for_icon_table",spacing_for_icon_table)
@@ -760,6 +831,9 @@ class Dialog_for_set_gamelist_icon_size(QDialog):
         settings.setValue("gamelist/sapcing_for_image_table",sapcing_for_image_table)
         settings.setValue("gamelist/image_width_for_image_table",image_width_for_image_table)
         settings.setValue("gamelist/image_height_for_image_table",image_height_for_image_table)
+        settings.setValue("gamelist/text_height_for_image_table",text_height_for_image_table)
+        settings.setValue("gamelist/text_width_for_icon_table",text_width_for_icon_table)
+        settings.setValue("gamelist/text_height_for_icon_table",text_height_for_icon_table)
         
         ui_models.load_and_resize_internal_icon()
         self.parent().new_func_for_set_listview_spacing()
@@ -1645,14 +1719,15 @@ class Image_dockwidget(QDockWidget):
 
         try:
             pixmap = QPixmap(file_path)
-            scaled_pixmap = pixmap.scaled(
-                self.new_label_for_image.size(),                  # 目标大小
-                Qt.KeepAspectRatio,            # 保持宽高比[reference:5]
-                Qt.SmoothTransformation        # 平滑变换[reference:6]
-                )            
-            self.new_label_for_image.setPixmap(scaled_pixmap)
-            self.new_pixmap_original = pixmap
-            return True
+            if not pixmap.isNull():
+                scaled_pixmap = pixmap.scaled(
+                    self.new_label_for_image.size(),                  # 目标大小
+                    Qt.KeepAspectRatio,            # 保持宽高比[reference:5]
+                    Qt.SmoothTransformation        # 平滑变换[reference:6]
+                    )
+                self.new_label_for_image.setPixmap(scaled_pixmap)
+                self.new_pixmap_original = pixmap
+                return True
         except:
             pass
 
@@ -1685,18 +1760,18 @@ class Image_dockwidget(QDockWidget):
                     with self.new_zip_opened_file.open(image_file_path, mode='r', ) as image_data:
 
                         pixmap=QPixmap()
-                        pixmap.loadFromData(image_data.read()) 
-                        scaled_pixmap = pixmap.scaled(
-                            self.new_label_for_image.size(),                  # 目标大小
-                            Qt.KeepAspectRatio,            # 保持宽高比
-                            Qt.SmoothTransformation        # 平滑变换
-                            )      
-                        self.new_label_for_image.setPixmap(scaled_pixmap)
-                        self.new_pixmap_original = pixmap
-                        
-                        #print(zip_file_path)
-                        #print(image_file_path)
-                        return True
+                        if pixmap.loadFromData(image_data.read()) :
+                            scaled_pixmap = pixmap.scaled(
+                                self.new_label_for_image.size(),                  # 目标大小
+                                Qt.KeepAspectRatio,            # 保持宽高比
+                                Qt.SmoothTransformation        # 平滑变换
+                                )
+                            self.new_label_for_image.setPixmap(scaled_pixmap)
+                            self.new_pixmap_original = pixmap
+                            
+                            #print(zip_file_path)
+                            #print(image_file_path)
+                            return True
                 except:
                     pass
 
@@ -2386,8 +2461,9 @@ class Dialog_for_show_bios_selector(QDialog):
         print(self.new_bios_list[row])
         bios_name = self.new_bios_list[row][0]
         if self.new_game_id:
-            self.parentWidget().new_func_start_emulator(self.new_game_id,other_command_list=["-bios",bios_name])
             self.accept()
+            self.parentWidget().new_func_start_emulator(self.new_game_id,other_command_list=["-bios",bios_name])
+            
 
     @Slot(int,int)
     def new_slot_for_start_mame_detached(self,row,column):
@@ -2493,8 +2569,8 @@ class Dialog_for_show_script_selector(QDialog):
         print(self.new_script_list[row])
         script_name = self.new_script_list[row]
         if self.new_game_id:
-            self.parentWidget().new_func_start_process_by_script(self.new_game_id,script_name,hide=True)
             self.accept()
+            self.parentWidget().new_func_start_process_by_script(self.new_game_id,script_name,hide=True)
 
     @Slot(int,int)
     def new_slot_for_start_mame_detached(self,row,column):

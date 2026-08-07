@@ -1,0 +1,11 @@
+﻿%mame%
+%machine%
+
+command -video
+command bgfx
+
+command -bgfx_screen_chains
+command crt-geom
+
+
+

@@ -376,7 +376,7 @@ class My_Tree_View(QTreeView):
         if not game_id:
             return
         #print(hide)
-        self.parent().new_func_start_emulator(game_id,game_info=game_info,hide=hide)
+        self.parentWidget().new_func_start_emulator(game_id,game_info=game_info,hide=hide)
 
     def new_func_context_menu_show_command_line_result(self,command_list=None):
         if command_list is None:

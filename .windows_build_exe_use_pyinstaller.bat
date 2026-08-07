@@ -14,3 +14,6 @@ python -m PyInstaller ^
 
 rem copy qss 
 xcopy  qss    dist\JKui\qss    /E /I /H /Y
+xcopy  folders    dist\JKui\folders    /E /I /H /Y
+xcopy  .JKui    dist\JKui\.JKui    /E /I /H /Y
+copy  LICENSE    dist\JKui\LICENSE     /Y

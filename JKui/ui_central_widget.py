@@ -1,4 +1,4 @@
-import io,re,os,shutil,time
+import io,re,os,shutil,time,sys,traceback
 import xml.etree.ElementTree
 
 from qtpy.QtWidgets import *
@@ -346,6 +346,8 @@ class TheCentralWidget(QStackedWidget):
                 working_directory,command_list = self.get_script_content(script_file,game_id,mame_exe_path,mame_working_directory,hide)
             except:
                 print("get_script_content() ,failed")
+                exc_type, exc_value, exc_traceback = sys.exc_info()
+                print(traceback.print_exception(exc_type, exc_value, exc_traceback))
                 return
 
             if command_list:
@@ -369,6 +371,7 @@ class TheCentralWidget(QStackedWidget):
         if self.new_saved_state_for_parent:
             self.parentWidget().restoreState(self.new_saved_state_for_parent)
         self.parentWidget().show()
+        self.currentWidget().setFocus()
     @Slot(int,QProcess.ExitStatus)
     def new_slot_for_standard_error_data(self,exitCode,exitStatus,):
         self.new_buffer_to_hold_error_data.seek(0)
@@ -566,13 +569,19 @@ class TheCentralWidget(QStackedWidget):
     def new_func_get_bios_result(self,game_id,executable_path,cwd):
         # 返回 [[bios_name,bios_description],[bios_name_2,bios_description_2],...]
 
+        executable_path, cwd = misc_funcs.get_abspath_for_exe_path_and_working_directory(executable_path,cwd)
+
+        print()
+        print("new_func_get_bios_result")
+        print("game_id",game_id)
+
         command_list = []
         command_list.append("-listxml")
         command_list.append(game_id)
 
-        print(executable_path)
-        print(cwd)
-        print(command_list)
+        print("cwd",cwd)
+        print("executable_path",executable_path)
+        print("command_list",command_list)
 
         self.new_process_for_bios = QProcess(self)
         if cwd:
@@ -612,7 +621,8 @@ class TheCentralWidget(QStackedWidget):
                                 if temp[0]:
                                     bios_list.append(temp)
                         break
-        
+
+        print()
         return bios_list
 
     #
@@ -623,7 +633,7 @@ class TheCentralWidget(QStackedWidget):
         except:
             self.new_dialog_for_show_script_selector = ui_small_windows.Dialog_for_show_script_selector(self)
         self.new_dialog_for_show_script_selector.new_func_set_values(game_id)
-        self.new_dialog_for_show_script_selector.exec()    
+        self.new_dialog_for_show_script_selector.exec()
 
     # 显示 可编辑目录 选择器
     def new_func_show_editable_index_selector(self,game_id_s,add_mode=True): # 单个 game_id ，或多个 game_id 可迭代对象
@@ -662,12 +672,27 @@ class TheCentralWidget(QStackedWidget):
         # 自定义部分不要包含空字符，方便后面处理
         #   用户定义部分，中间，可以含空字符，末尾空字符去掉
         #
-        # %mame% ，不管内容，替换为 mame_exe
-        # %machine% ，不管内容，替换为 machine
+        # 一段
+        # %cwd% ，工作目录，如果有此文件夹，替换为 cwd；应该写在最前方
+        #   如果是使用 默认的 mame 模拟器，此项可以省略
         #
+        # 一段
+        # %mame% ，单独一行，替换为 mame_exe ; 添加到 command_list （通常作为第一项）
+        # %machine% ，单独一行，替换为 machine；添加到 command_list
+        # %unibios_last% ，单独一行，（使用默认的 mame 模拟器时），查找 uni-bios 信息，如果有，找到最后一个，添加到 command_list 中，
+        #     不确定每个版本名称规则是否一样，可能会影响到查找结果
+        # %unibios_last_other% ，单独一行，（使用其它 mame 模拟器时），查找 uni-bios 信息，如果有，找到最后一个， 添加到 command_list 中，
+        #     不确定每个版本名称规则是否一样，可能会影响到查找结果
+        #
+        # 两段
         # command 普通指令
-        #
-        # %cwd% ，换到内容，如果有效，替换为 cwd
+        #   为 command_list 增加一项，内容为 普通指令
+        # command_suffix 普通指令
+        #   为 command_list 的最后一项，增加内容，
+        # command_suffix %machine%
+        #   为 command_list 的最后一项，增加内容，值为对应的 machine ，
+
+        
         
         # 正则
 
@@ -696,18 +721,23 @@ class TheCentralWidget(QStackedWidget):
                 m=p.search( line )
                 if m:
                     if m.group(1)   == r"%mame%" :
+                        if len(command_list) == 0:
+                            flag_use_mame = True
                         command_list.append(mame_exe)
-                        flag_use_mame = True
+
                     elif m.group(1) == r"%machine%" :
                         command_list.append(machine)
                     elif m.group(1) == r"%unibios_last%" : # 使用默认 模拟器
-                        uni_bios = self.get_uni_bios_last(machine,mame_path=mame_exe,cwd=cwd)
-                        if uni_bios:
-                            command_list.append("-bios")
-                            command_list.append(uni_bios)
+                        if command_list:
+                            uni_bios = self.get_uni_bios_last(machine,mame_path=mame_exe,cwd=mame_working_directory)
+                            if uni_bios:
+                                command_list.append("-bios")
+                                command_list.append(uni_bios)
                     elif m.group(1) == r"%unibios_last_other%" :# 使用 其它 mame 模拟器
                         if command_list:
+                            #print("xxxxxxxxxxx")
                             uni_bios = self.get_uni_bios_last(machine,mame_path=command_list[0],cwd=cwd)
+                            #print("yyyyyyyy")
                             if uni_bios:
                                 command_list.append("-bios")
                                 command_list.append(uni_bios)
@@ -718,6 +748,12 @@ class TheCentralWidget(QStackedWidget):
                 if m:
                     if   m.group(1) == "command" : 
                         command_list.append(m.group(2))
+                    elif m.group(1) == "command_suffix" : 
+                        if command_list:
+                            if "%machine%"==m.group(2):
+                                command_list[-1] = command_list[-1] + machine
+                            else:
+                                command_list[-1] = command_list[-1] + m.group(2)
                     elif m.group(1) == r"%cwd%" : 
                         if os.path.isdir(m.group(2)):
                             cwd = m.group(2)
@@ -728,6 +764,9 @@ class TheCentralWidget(QStackedWidget):
         if flag_use_mame == True:
             if not cwd:
                 cwd = mame_working_directory
+
+        #print("cwd :",cwd)
+        #print("command_list :",command_list)
 
         if flag_use_mame :
             return cwd,command_list

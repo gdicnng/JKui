@@ -1,0 +1,5 @@
+﻿%mame%
+
+%machine%
+
+command -mouse

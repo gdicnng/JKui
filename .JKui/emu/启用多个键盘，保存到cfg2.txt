@@ -1,0 +1,8 @@
+﻿%mame%
+
+%machine%
+
+command -multikeyboard
+
+command -cfg_directory
+command cfg2

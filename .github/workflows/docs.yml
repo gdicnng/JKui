@@ -1,0 +1,44 @@
+name: python 3.8 embed
+
+#on:
+#  push:
+#    branches: [ main ]          # 触发条件可按需调整
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'JKui/**'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  jobs_1: # build exe 
+    
+    strategy:
+      matrix:
+        os: [ windows-latest,  ]
+    
+    runs-on: ${{ matrix.os }} 
+    
+    defaults:
+      run:
+        shell: cmd
+    
+    steps:
+    - name: checkout
+      uses: actions/checkout@v6
+    
+    - name: 7z
+      run: |
+        7z a -t7z -mx=9 docs.7z docs\*.txt
+
+    - name: update file
+      env:
+        GH_TOKEN: ${{ github.token }}   # 使用内置 token
+      run: |
+        gh release create latest --prerelease --title "latest" --notes "" || true
+        gh release upload latest "docs.7z" --clobber

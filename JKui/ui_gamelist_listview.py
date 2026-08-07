@@ -1,3 +1,5 @@
+import functools
+
 from qtpy.QtGui import *
 from qtpy.QtWidgets import *
 from qtpy.QtCore import *
@@ -22,6 +24,7 @@ class My_Icon_Table(QListView):
         
         #self.setIconSize(QSize(32,32))
         #self.setGridSize(QSize(120,60))
+        #self.setGridSize(QSize(32+5,32+6))
 
         # 间隔
         self.setSpacing(the_variables.spacing_for_icon_table)
@@ -64,12 +67,97 @@ class My_Icon_Table(QListView):
     def new_func(self):
         model = ui_models.Model_for_icon(self)
         self.setModel(model)
-
+        
         self.setObjectName("icon_table")
         self.model().new_signal_time_for_choose_remember_game.connect(self.new_func_scrollto_to_last_game)
+        
+        the_delegate = ui_models.Delegate_for_Model_of_icon(self)
+        self.setItemDelegate(the_delegate)
 
     def new_func_create_context_menu(self,):
         self.new_context_menu = QMenu(self)
+        
+        action_run_game=QAction("运行游戏", self)
+        action_run_game.triggered.connect(lambda: self.new_func_context_menu_run_game(True))
+        self.new_context_menu.addAction(action_run_game)
+
+        action_run_game_not_hide_ui=QAction("运行游戏，不隐藏UI窗口", self)
+        action_run_game_not_hide_ui.triggered.connect(lambda: self.new_func_context_menu_run_game(False))
+        self.new_context_menu.addAction(action_run_game_not_hide_ui)
+
+        action_run_game_by_user_setting=QAction("自定义运行方式", self)
+        action_run_game_by_user_setting.triggered.connect(self.new_func_context_menu_script_selector)
+        self.new_context_menu.addAction(action_run_game_by_user_setting)
+
+        action_bios_selector=QAction("BIOS选择(仅部分游戏有)", self)
+        action_bios_selector.triggered.connect(self.new_func_context_menu_bios_selector)
+        self.new_context_menu.addAction(action_bios_selector)
+
+        self.new_context_menu.addSeparator()
+        # ["-verifyroms",]
+        action_verifyroms=QAction("-verifyroms,校验 roms", self)
+        action_verifyroms.triggered.connect(lambda: self.new_func_context_menu_show_command_line_result( ["-verifyroms"] ,))
+        self.new_context_menu.addAction(action_verifyroms)
+        # ["-verifysamples",]
+        action_verifysamples=QAction("-verifysamples,校验 samples", self)
+        action_verifysamples.triggered.connect(lambda: self.new_func_context_menu_show_command_line_result( ["-verifysamples"] ,))
+        self.new_context_menu.addAction(action_verifysamples)
+        # ["-listroms",]
+        action_listroms=QAction("-listroms,列出 roms (信息过于简略)", self)
+        action_listroms.triggered.connect(lambda: self.new_func_context_menu_show_command_line_result( ["-listroms"] ,))
+        self.new_context_menu.addAction(action_listroms)
+        # ["-listxml",]
+        action_listxml=QAction("-listxml,显示 roms 信息 （含大量其它信息）", self)
+        action_listxml.triggered.connect(lambda: self.new_func_context_menu_show_command_line_result( ["-listxml"] ,))
+        self.new_context_menu.addAction(action_listxml)
+        # ["-listxml","-nodtd"]
+        action_listxml_nodtd=QAction("-listxml -nodtd,同上，不包含 DTD 文件头", self)
+        action_listxml_nodtd.triggered.connect(lambda: self.new_func_context_menu_show_command_line_result( ["-listxml","-nodtd"] ,))
+        self.new_context_menu.addAction(action_listxml_nodtd)
+        # 其它指令
+        menu_other_command_line = self.new_context_menu.addMenu("其他指令")
+        temp_list = [
+            ["-listbios"],
+            ["-listmedia"],
+            ["-listcrc"],
+            ["-listsamples"],
+            ["-listdevices"],
+            ["-listsource"],
+            ["-listclones"],
+            ["-listbrothers"],
+            ["-listslots"],
+        ]
+        for command_list in temp_list:
+            action = QAction(command_list[0], self)
+            action.triggered.connect(functools.partial(self.new_func_context_menu_show_command_line_result, command_list))
+            menu_other_command_line.addAction(action)
+
+        self.new_context_menu.addSeparator()
+        ## 编辑目录
+        # 单选，从本列表删除
+        self.new_action_delete_selected_item_from_current_table=QAction("单选，从本列表删除", self)
+        self.new_action_delete_selected_item_from_current_table.triggered.connect(self.new_func_context_menu_delete_current_item)
+        self.new_context_menu.addAction(self.new_action_delete_selected_item_from_current_table)
+        # 单选，添加到其它目录
+        self.new_action_add_current_item_to_index=QAction("单选，添加到其它目录", self)
+        self.new_action_add_current_item_to_index.triggered.connect(self.new_func_context_menu_add_current_item_to_index)
+        self.new_context_menu.addAction(self.new_action_add_current_item_to_index)
+        ## 多选（勾选），从本列表删除
+        #self.new_action_delete_selected_items_from_current_table=QAction("多选（勾选），从本列表删除", self)
+        #self.new_action_delete_selected_items_from_current_table.triggered.connect(self.new_func_context_menu_delete_selected_items_from_current_table)
+        #self.new_context_menu.addAction(self.new_action_delete_selected_items_from_current_table)
+        ## 多选（勾选），从选中列表删除
+        #self.new_action_delete_selected_items_from_index=QAction("多选（勾选），从选中列表删除", self)
+        #self.new_action_delete_selected_items_from_index.triggered.connect(self.new_func_context_menu_delete_selected_items_from_index)
+        #self.new_context_menu.addAction(self.new_action_delete_selected_items_from_index)
+        ## 多选（勾选），添加到其它目录
+        #self.new_action_add_selected_items_to_index=QAction("多选（勾选），添加到其它目录", self)
+        #self.new_action_add_selected_items_to_index.triggered.connect(self.new_func_context_menu_add_selected_items_to_index)
+        #self.new_context_menu.addAction(self.new_action_add_selected_items_to_index)
+
+
+        self.new_context_menu.addSeparator()
+
         
         ############
         # id
@@ -265,25 +353,103 @@ class My_Icon_Table(QListView):
         ###
         super().keyPressEvent(event)
 
+    def new_func_context_menu_run_game(self,hide=True):
+        game_id, game_info = self.model().new_func_get_id_and_item_by_index(self.currentIndex())
+        if not game_id:
+            return
+        #print(hide)
+        self.parentWidget().new_func_start_emulator(game_id,game_info=game_info,hide=hide)
+
+    def new_func_context_menu_script_selector(self,):
+        current_index = self.currentIndex()
+        
+        if not current_index.isValid():
+            return
+        
+        game_id, game_info = self.model().new_func_get_id_and_item_by_index(current_index)
+        
+        if not game_id:
+            return
+        
+        self.parent().new_func_mame_show_script_selector(game_id)
+
+    def new_func_context_menu_bios_selector(self,):
+        current_index = self.currentIndex()
+        
+        if not current_index.isValid():
+            return
+
+        selected_index_list = self.selectionModel().selectedIndexes()
+        if current_index in selected_index_list:
+        
+            game_id, game_info = self.model().new_func_get_id_and_item_by_index(current_index)
+            
+            if not game_id:
+                return
+            
+            print(game_id)
+            self.parentWidget().new_func_mame_show_bios_selector( game_id,)
+
+    def new_func_context_menu_show_command_line_result(self,command_list=None):
+        if command_list is None:
+            command_list = []
+        if not command_list:
+            return
+        game_id, game_info = self.model().new_func_get_id_and_item_by_index(self.currentIndex())
+        if not game_id:
+            return
+        command_list_2 = []
+        command_list_2.append(game_id)
+        command_list_2.extend(command_list)
+        self.parentWidget().new_func_show_mame_command_line_result( command_list_2 ,)
+
+    def new_func_context_menu_delete_current_item(self,):
+        
+        if not ui_models.index_edit_mode:
+            return
+
+        # 编辑 本身，检查本身 是否可编辑
+        if not the_variables.index_id_1 in ui_models.editable_index_files:
+            return
+
+        # 单选模式，删除当前项
+        current_index = self.currentIndex()
+        selected_index_list = self.selectionModel().selectedIndexes()
+        if current_index in selected_index_list:
+            self.model().new_func_remove_one_item_by_index(current_index)
+
+    def new_func_context_menu_add_current_item_to_index(self,):
+        if not ui_models.index_edit_mode:
+            return
+
+        # 单选模式，添加当前项到其他索引
+        current_index = self.currentIndex()
+        selected_index_list = self.selectionModel().selectedIndexes()
+        if current_index in selected_index_list:
+            game_id, game_info = self.model().new_func_get_id_and_item_by_index(current_index)
+            self.parentWidget().new_func_show_editable_index_selector(game_id,add_mode=True)
+
 
 class My_Image_Table(My_Icon_Table):
     def __init__(self,*args,**kwargs ):
         super().__init__(*args,**kwargs)
 
-        #self.setIconSize(QSize(400,300))
-        #self.setGridSize(QSize(120,60))
-
-        # 间距
-        self.setSpacing(the_variables.sapcing_for_image_table)
-
         self.setTextElideMode(Qt.ElideRight) 
 
-        self.setVerticalScrollMode(QAbstractItemView.ScrollPerItem)
+        #self.setVerticalScrollMode(QAbstractItemView.ScrollPerItem)
         #self.setVerticalScrollMode(QAbstractItemView.ScrollPerPixel)
         #self.verticalScrollBar().setSingleStep(1)
         print("-------")
         print("pageStep",self.verticalScrollBar().pageStep())
         print("singleStep",self.verticalScrollBar().singleStep())
+
+        #self.setIconSize(QSize(400,300))
+        #self.setGridSize(QSize(120,60))
+        #self.setGridSize(QSize(320+20,240+100))
+
+        # 间距
+        self.setSpacing(the_variables.sapcing_for_image_table)
+        
     def new_func(self):
         model = ui_models.Model_for_image(self)
         self.setModel(model)
@@ -291,3 +457,5 @@ class My_Image_Table(My_Icon_Table):
         self.setObjectName("image_table")
         self.model().new_signal_time_for_choose_remember_game.connect(self.new_func_scrollto_to_last_game)
 
+        the_delegate = ui_models.Delegate_for_Model_of_image()
+        self.setItemDelegate(the_delegate)
