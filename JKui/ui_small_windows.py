@@ -1005,6 +1005,11 @@ class Dialog_for_set_font(QDialog):
             button.clicked.connect(functools.partial(self.new_func_for_choose_font, 
                                                      self.new_line_edit_for_font_family_dict[key],
                                                      self.new_line_edit_for_font_size_dict[key]))
+            #button.clicked.connect(lambda 
+            #                       checked ,
+            #                       line_edit_font=self.new_line_edit_for_font_family_dict[key] ,
+            #                       line_edit_size=self.new_line_edit_for_font_size_dict[key]   : 
+            #                           self.new_func_for_choose_font(line_edit_font,line_edit_size))
 
             layout.addLayout(row_layout)
 
@@ -1047,7 +1052,12 @@ class Dialog_for_set_font(QDialog):
                     self.new_line_edit_for_font_size_dict[key].setText(str(font_size))
 
     def new_func_for_choose_font(self,line_edit_font,line_edit_size):
+
+        # pyside6,pyqt5 ,反过来了
         ok,font = QFontDialog.getFont(self)
+        if not isinstance(ok,bool):
+            ok,font = font,ok
+
         if ok:
             print(font)
             font_info = QFontInfo(font)

@@ -133,7 +133,7 @@ class My_index_table(QTreeView):
                 # 未置顶，直接插入最顶部
                 ui_models.top_index_list.insert(0,id_1)
 
-            self.model().new_func_rebuild_index()
+            self.model().new_func_refresh_index()
 
     def new_func_cancel_pin_to_top(self,):
         print("cancel pin to top")
@@ -142,7 +142,7 @@ class My_index_table(QTreeView):
             id_1,id_2 = self.model().new_func_get_index_id_by_index(current_index)
             if id_1 in ui_models.top_index_list:
                 ui_models.top_index_list.remove(id_1)
-            self.model().new_func_rebuild_index()
+            self.model().new_func_refresh_index()
 
 class Line_editor_for_search(QLineEdit):
     new_signal_for_press_enter = Signal()

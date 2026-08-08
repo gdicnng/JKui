@@ -390,6 +390,9 @@ editable_index_has_children = dict()
 # 置顶目录
 top_index_list = []
 
+# 隐藏的内置目录
+hidden_index_set = set()
+
 def rebuild_index():
     # 第一层 index_list : 
     #   主目录 id
@@ -410,17 +413,26 @@ def rebuild_index():
 
     # 第一层 置顶
     for index_id in top_index_list:
+        if index_id in hidden_index_set:
+            continue
         if index_id in index_chainmap:
             if index_id not in used_id:
                 index_list.append(index_id)
                 used_id.add(index_id)
     # 第一层 内置
-    for index_id in ( the_variables.index_order ): # 内置固定优先排序
+    #  内置固定优先排序
+    for index_id in ( the_variables.index_order ): 
+        if index_id in hidden_index_set:
+            continue
         if index_id in ( internal_index.keys() | internal_index_2.keys() ):
             if index_id not in used_id:
                 index_list.append(index_id)
                 used_id.add(index_id)
-    for index_id in sorted( internal_index.keys() | internal_index_2.keys() ): # 其它
+    # 第一层 内置
+    #  其它
+    for index_id in sorted( internal_index.keys() | internal_index_2.keys() ): 
+        if index_id in hidden_index_set:
+            continue
         if index_id in index_chainmap:
             if index_id not in used_id:
                 index_list.append(index_id)
@@ -3684,7 +3696,7 @@ class Model_for_image(QAbstractListModel): # QAbstractItemModel
 
         if image_data:
             pixmap=QPixmap()
-            if pixmap.loadFromData(image_data) :
+            if pixmap.loadFromData(image_data,format="PNG") :
                 if not pixmap.isNull():
                     return pixmap
 
@@ -3909,6 +3921,10 @@ class Model_for_index(QAbstractItemModel):
     def __init__(self,):
         super().__init__()
 
+        self.new_search_flag = False
+        self.new_search_string = ""
+        self.new_search_use_re = False
+
     def data(self, index, role=Qt.DisplayRole):
         if not index.isValid():return None;
 
@@ -4031,17 +4047,24 @@ class Model_for_index(QAbstractItemModel):
         else:
                 return self.createIndex( row_level_2,0,row_level_1 + 2 )  
 
-    def new_func_search_index(self, re_string, use_re=False): 
+    def new_func_search_index(self, search_string, use_re=False): 
         global index_list,index_has_children
+
+        self.new_search_flag = True
+        self.new_search_string = search_string
+        self.new_search_use_re = use_re
+
 
         self.beginResetModel()
 
-        index_list ,index_has_children = func_for_index_search(re_string,use_re=use_re)
+        index_list ,index_has_children = func_for_index_search(search_string,use_re=use_re)
 
         self.endResetModel()
 
     def new_func_cancel_search(self): 
         #print("cancel search")
+
+        self.new_func_clear_search_flag()
 
         global index_list,index_has_children,index_list_backup,index_has_children_backup
 
@@ -4057,10 +4080,20 @@ class Model_for_index(QAbstractItemModel):
 
         self.endResetModel()
 
-    def new_func_rebuild_index(self):
+    def new_func_refresh_index(self):
+        # 置顶、取消置顶、隐藏、取消隐藏 后，需要更新数据
+        # 正常状态 、 搜索状态
         self.beginResetModel()
         rebuild_index()
+        if self.new_search_flag:
+            self.new_func_search_index(self.new_search_string , self.new_search_use_re)
         self.endResetModel()
+
+    def new_func_clear_search_flag(self):
+        self.new_search_flag = False
+        self.new_search_string = ""
+        self.new_search_use_re = False
+
 
 # editable_index_list
 # editable_index_has_children = dict()

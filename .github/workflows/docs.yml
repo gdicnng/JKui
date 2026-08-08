@@ -9,7 +9,7 @@ on:
     branches:
       - main
     paths:
-      - 'JKui/**'
+      - 'docs/**'
   workflow_dispatch:
 
 permissions:

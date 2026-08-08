@@ -340,6 +340,15 @@ class TheMainWindow(QMainWindow):
         new_action_save_index.setCheckable(False)
         new_action_save_index.triggered.connect( self.new_func_save_index )
         self.new_menu_index.addAction(new_action_save_index)
+        # 显示、隐藏 内置目录
+        self.new_menu_index.addSeparator()
+        
+        self.new_menu_show_or_hide_internal_index = self.new_menu_index.addMenu("显示、隐藏 内置目录")
+        # 等读取数据后，再添加内容
+
+        self.new_menu_index.addSeparator()
+
+
 
 
 
@@ -374,7 +383,7 @@ class TheMainWindow(QMainWindow):
         self.new_action_show_icon_table.triggered.connect( self.centralWidget().new_func_show_icon_table )
         self.new_menu_gamelist.addAction(self.new_action_show_icon_table)
         # 游戏列表 显示 image table
-        self.new_action_show_image_table = QAction("显示 图片模式",self,)
+        self.new_action_show_image_table = QAction("显示 图片模式（使用最后一个 .zip 压缩包中的图片资源）",self,)
         self.new_action_show_image_table.triggered.connect( self.centralWidget().new_func_show_image_table )
         self.new_menu_gamelist.addAction(self.new_action_show_image_table)
         self.new_menu_gamelist.addSeparator()
@@ -432,7 +441,7 @@ class TheMainWindow(QMainWindow):
         self.new_menu_gamelist.addAction(action_set_multi_selection_mode)
         # 游戏列表 列表编辑模式 仅翻译列
         self.new_menu_gamelist.addSeparator()
-        action_set_gamelist_edit_mode = QAction("列表编辑模式 仅翻译列",self,)
+        action_set_gamelist_edit_mode = QAction("列表编辑模式 仅翻译列（编辑后记得手动点击下方选项保存）",self,)
         action_set_gamelist_edit_mode.setCheckable(True)
         #try:    ui_models.gamelist_editable_mode = self.new_settings.value("gamelist/gamelist_editable_mode",False,type=bool)
         #except: ui_models.gamelist_editable_mode = False
@@ -440,10 +449,10 @@ class TheMainWindow(QMainWindow):
         action_set_gamelist_edit_mode.toggled.connect( self.new_func_gamelist_list_edit_mode )
         self.new_menu_gamelist.addAction(action_set_gamelist_edit_mode)
         # 游戏列表 保存
-        self.new_menu_gamelist.addSeparator()
         action_for_save_gamelist = QAction("保存游戏列表",self,)
         action_for_save_gamelist.triggered.connect( self.new_func_save_gamelist )
         self.new_menu_gamelist.addAction(action_for_save_gamelist)
+        self.new_menu_gamelist.addSeparator()
 
 
         ##### 周边
@@ -832,6 +841,49 @@ class TheMainWindow(QMainWindow):
         ui_models.load_and_resize_internal_icon()
         #
         ui_models.update_some_value()
+
+
+        # 菜单
+        #  显示、隐藏 内置目录 （内置目录在更新数据后，才有）
+        # 取值
+        try:hidden_index = self.new_settings.value("index/hidden_index_set")
+        except:hidden_index = ""
+        if type(hidden_index) != str: hidden_index = ""
+        hidden_index_set = {x for x in hidden_index.split(";")}
+        hidden_index_set = hidden_index_set & (ui_models.internal_index.keys() | ui_models.internal_index_2.keys())
+        if hidden_index_set:
+            ui_models.hidden_index_set = hidden_index_set
+            print("ui_models.hidden_index_set",ui_models.hidden_index_set)
+        # internal_index_list
+        internal_index_list = list( ui_models.internal_index.keys() | ui_models.internal_index_2.keys() )
+        # 排序
+        temp_list = []
+        used_index_set=set()
+        for index_id in the_variables.index_order:
+            if index_id in internal_index_list:
+                if index_id not in used_index_set:
+                    temp_list.append(index_id)
+                    used_index_set.add(index_id)
+        for index_id in sorted( set(internal_index_list) - used_index_set):
+            temp_list.append(index_id)
+        internal_index_list = temp_list
+        del temp_list
+        del used_index_set
+        # 新建菜单
+        for index_id in internal_index_list:
+            the_text = index_id
+            if index_id in the_variables.index_translation:
+                the_text = the_variables.index_translation[index_id]
+            action = QAction(the_text,self)
+            self.new_menu_show_or_hide_internal_index.addAction(action)
+            action.setCheckable(True)
+            if index_id in ui_models.hidden_index_set:
+                action.setChecked(False)
+            else:
+                action.setChecked(True)
+            action.triggered.connect(lambda checked,internal_index_id=index_id : self.new_func_for_show_or_hide_index(checked,internal_index_id))
+
+
 
         self.setWindowTitle(the_variables.software_name + " - 更新模型数据2")
 
@@ -1549,6 +1601,23 @@ class TheMainWindow(QMainWindow):
 
         if failed_list:
             QMessageBox.warning(self,"文件保存失败","\n".join(failed_list))
+    # menu ,index 显示、隐藏 内置目录
+    def new_func_for_show_or_hide_index(self,checked,internal_index_id):
+        print("checked",checked,"internal_index_id",internal_index_id)
+        
+        if checked:
+            # 显示
+            ui_models.hidden_index_set.discard(internal_index_id)
+        else:
+            ui_models.hidden_index_set.add(internal_index_id)
+
+        value = ";".join(ui_models.hidden_index_set)
+        self.new_settings.setValue("index/hidden_index_set",value)
+
+        self.new_ui_index.model().new_func_refresh_index()
+
+
+
     # menu gamelist 多选模式（勾选）
     @Slot(bool)
     def new_func_gamelist_multi_selection_mode(self,checked):

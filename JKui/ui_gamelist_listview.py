@@ -1,4 +1,3 @@
-import functools
 
 from qtpy.QtGui import *
 from qtpy.QtWidgets import *
@@ -129,7 +128,7 @@ class My_Icon_Table(QListView):
         ]
         for command_list in temp_list:
             action = QAction(command_list[0], self)
-            action.triggered.connect(functools.partial(self.new_func_context_menu_show_command_line_result, command_list))
+            action.triggered.connect(lambda cheched,the_command_list = command_list:self.new_func_context_menu_show_command_line_result(the_command_list) )
             menu_other_command_line.addAction(action)
 
         self.new_context_menu.addSeparator()
