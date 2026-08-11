@@ -39,7 +39,7 @@ jobs:
     
     - name: 7z source
       run: |
-        7z a -t7z -mx=9 "JKui_source.7z" JKui qss
+        7z a -t7z -mx=9 "JKui_source.7z" JKui qss LICENSE folders .JKui
     
     - name: Set up Python
       uses: actions/setup-python@v6

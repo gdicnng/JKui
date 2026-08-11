@@ -210,6 +210,18 @@ class My_Icon_Table(QListView):
             try:self.new_action_show_manufacturer.setText(game_info[ ui_models.columns.index("manufacturer") ])
             except:self.new_action_show_manufacturer.setText("")
 
+            # 目录编辑，根据需要禁用、启用
+            self.new_action_delete_selected_item_from_current_table.setEnabled(False)
+            self.new_action_add_current_item_to_index.setEnabled(False)
+            if ui_models.index_edit_mode:
+                if ui_models.editable_index_files:
+                    self.new_action_add_current_item_to_index.setEnabled(True)
+
+                    # 当前表格 在 可编辑目录 中
+                    id_1 = self.model().new_remember_index_id_1
+                    if id_1 in ui_models.editable_index_files:
+                        self.new_action_delete_selected_item_from_current_table.setEnabled(True)
+
             self.new_context_menu.exec(e.globalPos())
     
     def new_func_context_menu_click_to_copy_action_text(self,action,):
