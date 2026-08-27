@@ -28,7 +28,7 @@ python_embed\python.exe -m pip install PyQt5
 
 rem run_Jkui.bat
 echo @echo off>run_Jkui.bat
-echo CD /D ^"^%^~dp0^">>run_Jkui.bat
+echo CD /D "%%~dp0">>run_Jkui.bat
 echo start python_embed\pythonw.exe Jkui>>run_Jkui.bat
 
 7z a -t7z -mx=9 "%out_7z_name%" python_embed  qss  JKui  run_Jkui.bat   LICENSE   folders   .JKui
