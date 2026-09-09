@@ -1,0 +1,77 @@
+﻿在 Windows 操作系统上，怎样用 python 运行 JKui 。
+
+本程序用 python 编程语言写的，可以用 python 调用源代码文件运行程序。
+
+python 版本以及 第三方库：
+  Python 3.13
+  QtPy 2.4.3
+  PySide6 6.8.3
+老版本 python 的话，第三方库可以试试使用 QtPy 与 PyQt5 。
+
+
+如果同时安装了多个 QT ，怎样切换不同的 GUI 库？
+  
+  QtPy 作为一个中间层，方便切换不同的 QT 库， PyQt5/PySide2/PyQt6/PySide6 。
+    PySide6 (qt6) 写程序时，用的这个。
+    PyQt5   (qt5) 稍微测试了一下。
+    PySide2 (qt5) 未测试。
+    PyQt6   (qt6) 未测试。
+  
+  比如指定使用 PySide6 运行 ，设置环境变量 QT_API 为 pyside6 ，然后再运行即可。
+    
+    CMD 与 PowerShell 的变量名好像都不用区分大小写
+    
+    命令行如果是 CMD ：
+        set qt_api=pyside6
+        后续指令
+    
+    命令行如果是 PowerShell ：
+        $env:qt_api = 'pyside6'
+        后续指令
+    
+    QT_API 的取值，见：https://pypi.org/project/QtPy/
+        pyqt5 (to use PyQt5).
+        pyside2 (to use PySide2).
+        pyqt6 (to use PyQt6).
+        pyside6 (to use PySide6).
+
+
+命令行操作，需注意 当前工作文件夹 的位置。
+因为 JKui 生成的文件 以及 需要使用的文件，使用了相对路径。
+
+
+
+打开命令行，进入对应的文件夹（需注意 当前工作文件夹 的位置）。
+主脚本入口为 JKui 文件夹中的 __main__.py 。
+用 python 调用即可运行。
+比如（如有需要，自行补全 python 、Jkui 对应的路径）：
+  使用 脚本文件的路径 作为参数
+  python.exe JKui\__main__.py
+  
+  因文件名为 __main__.py，调用时可以有一些变化
+    比如：使用其所在文件夹路径作为参数：
+    python.exe JKui
+    
+    或 把 __main__.py 等文件放入压缩包 JKui.zip 中，使用 zip 压缩包的路径 作为参数：
+    python.exe JKui.zip
+需要显示命令行内容时，使用 python.exe  / py.exe  。
+不需要命令行显示的话，使用 pythonw.exe / pyw.exe 。
+( 注意运行时，如果需要显示命令行窗口，不要让命令行窗口暂停。我记得有些版本的操作系统，鼠标点一下就可以暂停命令行了 )
+
+
+
+如果使用 .bat 批处理文件 启动程序， 显示命令行，可以用：
+    CD /D "%~dp0"
+    python.exe Jkui
+    （如有需要，自行补全 python.exe 、Jkui 对应的路径）
+    （python.exe 也可以用 py.exe 或许更方便一点 ）
+如果使用 .bat 批处理文件 启动程序， 关闭命令行，可以用：
+    CD /D "%~dp0"
+    start pythonw.exe Jkui
+    （如有需要，自行补全 pythonw.exe 、Jkui 对应的路径）
+    （pythonw.exe 也可以用 pyw.exe 或许更方便一点 ）
+其中指令： CD /D "%~dp0"，表示进入 .bat 脚本 所在的文件夹（建议文件夹路径中不要有特殊字符）。
+  用这条指令定位，将当前工作文件夹设置到 脚本 所在的文件夹。
+  我电脑上试了一下：
+    如果普通 的 鼠标双击 脚本，运行，好像不需要这条指令，默认 当前工作文件夹 好像自动就到跳转到了 脚本所在的文件夹；
+    如果鼠标右击，弹出菜单，选择 以管理员方式运行 （ JKui 的话，不需要以管理员方式运行 ），默认的当前工作文件夹就不同了，需要类似这样的指令定位当前工作文件夹。
